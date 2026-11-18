@@ -1,0 +1,36 @@
+{
+  "name": "mac-hoa-tien-thanh",
+  "version": "0.0.1",
+  "description": "Mặc Họa Tiên Thành — xianxia sect/city builder, ink-wash isometric, web PWA",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoabb2a/mac-hoa-tien-thanh.git"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/khoabb2a/mac-hoa-tien-thanh/issues"
+  },
+  "homepage": "https://github.com/khoabb2a/mac-hoa-tien-thanh#readme",
+  "dependencies": {
+    "preact": "^11.2.0",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.0"
+  },
+  "private": true,
+  "type": "module"
+}
