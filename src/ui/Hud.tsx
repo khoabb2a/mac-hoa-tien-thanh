@@ -6,6 +6,7 @@ import type { SpeedIndex } from '../sim/time';
 interface Props {
   world: World;
   onOverlay: (on: boolean) => void;
+  onArt: (on: boolean) => void;
   selected: number | null;
 }
 
@@ -13,9 +14,10 @@ const NAV = ['build', 'zone', 'disciples', 'encounters', 'sect'] as const;
 const NAV_GLYPH: Record<(typeof NAV)[number], string> = { build: '築', zone: '域', disciples: '徒', encounters: '緣', sect: '宗' };
 
 /** HUD màn dọc một tay (GDD 9.2): thanh trên 3 chỉ số + Thời Luân, chip nổi, 5 nút dưới. */
-export function Hud({ world, onOverlay, selected }: Props) {
+export function Hud({ world, onOverlay, onArt, selected }: Props) {
   const [, force] = useState(0);
   const [overlay, setOverlay] = useState(false);
+  const [art, setArt] = useState(true);
   const [newsIdx, setNewsIdx] = useState(0);
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export function Hud({ world, onOverlay, selected }: Props) {
 
   const setSpeed = (s: SpeedIndex) => { c.speed = s; force((n) => n + 1); };
   const toggleOverlay = () => { const v = !overlay; setOverlay(v); onOverlay(v); };
+  const toggleArt = () => { const v = !art; setArt(v); onArt(v); };
 
   return (
     <div class="hud">
@@ -54,6 +57,10 @@ export function Hud({ world, onOverlay, selected }: Props) {
         </div>
         <div class="news">{t(`news.${newsIdx}`)}</div>
       </header>
+
+      <button class="chip art" onClick={toggleArt}>
+        <span class="glyph">{art ? '畫' : '模'}</span> {art ? t('view.art') : t('view.blockout')}
+      </button>
 
       <button class={`chip eye ${overlay ? 'on' : ''}`} onClick={toggleOverlay}>
         <span class="glyph">眼</span> {t('overlay.thienNhan')}

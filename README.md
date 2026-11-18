@@ -60,4 +60,8 @@ Toàn bộ hình ảnh do AI vẽ (GDD mục 3.4). Bước hiện có:
 3. Phong cách sửa ở `tools/art/style-prompt.md`; mô tả từng công trình ở `tools/art/subjects.json`.
 4. **Không có khóa API?** Dùng prompt dán tay trong [`tools/art/PROMPTS.md`](tools/art/PROMPTS.md) với Gemini app hoặc AI Studio.
 
+5. **Tách nền → sprite game:** lưu ảnh chọn vào `art/source/<loại>_vN.png`, chạy
+   `python tools/art/cutout.py art/source/chinhDien_v1.png chinhDien` → `public/sprites/chinhDien.webp`.
+   Game tự đặt sprite khớp ô đất; nút **Họa bản / Khối thô** để so.
+
 Loại có sẵn: `chinhDien`, `tinhXa`, `tuLinhTran`, `duocVien`.

@@ -30,6 +30,7 @@ const draw = () =>
         overlayOn = on;
         scene.setOverlay(overlayOn);
       }}
+      onArt={(on) => scene.setArtMode(on)}
     />,
     hudRoot,
   );

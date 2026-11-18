@@ -5,6 +5,7 @@ import type { World } from '../sim/world';
 import { buildBlockout } from './blockout/buildings';
 import { inkMaterial, withInkEdges } from './inkMaterial';
 import { PALETTE } from './palette';
+import { fitSpriteToBlockout, loadSpriteTexture, SPRITE_URL } from './sprites';
 
 /** Góc nhìn isometric 2:1 (GDD 3.3): phương vị 45°, nghiêng 30° ⇒ ô vuông thành hình thoi 2:1. */
 const AZIMUTH = Math.PI / 4;
@@ -29,6 +30,10 @@ export class IsoScene {
   private buildingGroups = new Map<number, THREE.Group>();
   private bubbles = new Map<number, THREE.Sprite>();
   private spinners: THREE.Object3D[] = [];
+  private sprites = new Map<number, THREE.Sprite>();
+  /** true = hiện họa bản AI vẽ; false = khối thô (để so sánh). */
+  private artMode = true;
+  private readonly viewQuat: THREE.Quaternion;
   private overlay = false;
   private timer = new THREE.Timer();
   private onSelect: (id: number | null) => void = () => {};
@@ -40,6 +45,10 @@ export class IsoScene {
     this.renderer.setClearColor(0x000000, 0); // nền giấy do CSS vẽ
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+    const probe = new THREE.OrthographicCamera();
+    probe.position.copy(viewDirection());
+    probe.lookAt(0, 0, 0);
+    this.viewQuat = probe.quaternion.clone();
     this.target.set(world.grid.width / 2, 0, world.grid.height / 2 + 1);
     this.scene.fog = new THREE.Fog(PALETTE.paper, 62, 105); // xa nhạt, gần đậm (camera cách tâm 60)
 
@@ -56,6 +65,15 @@ export class IsoScene {
 
   setOnSelect(fn: (id: number | null) => void): void {
     this.onSelect = fn;
+  }
+
+  setArtMode(on: boolean): void {
+    this.artMode = on;
+    for (const [id, group] of this.buildingGroups) {
+      const sprite = this.sprites.get(id);
+      group.visible = !(on && sprite);
+      if (sprite) sprite.visible = on;
+    }
   }
 
   setOverlay(on: boolean): void {
@@ -140,11 +158,29 @@ export class IsoScene {
     this.scene.add(group);
     this.buildingGroups.set(id, group);
 
+    const url = SPRITE_URL[b.type];
+    if (url) {
+      const mat = new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false });
+      const sprite = new THREE.Sprite(mat);
+      sprite.userData.buildingId = id;
+      sprite.renderOrder = 100 + b.x + b.w + b.y + b.h; // vẽ kiểu họa sĩ: ô gần camera vẽ sau
+      sprite.visible = false;
+      this.scene.add(sprite);
+      this.sprites.set(id, sprite);
+      mat.map = loadSpriteTexture(url, (tex) => {
+        const img = tex.image as { width: number; height: number };
+        fitSpriteToBlockout(sprite, group, this.viewQuat, img.height / img.width);
+        mat.needsUpdate = true;
+        this.setArtMode(this.artMode);
+      });
+    }
+
     // Bong bóng chữ triện "氣" khi thiếu linh khí (GDD 9.4, tầng 1).
     const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: sealTexture('氣'), depthTest: false }));
     bubble.scale.set(0.6, 0.6, 1);
     bubble.position.set(b.x + b.w / 2, 2.2, b.y + b.h / 2);
     bubble.visible = false;
+    bubble.renderOrder = 1000;
     this.scene.add(bubble);
     this.bubbles.set(id, bubble);
   }
@@ -174,12 +210,7 @@ export class IsoScene {
   }
 
   private placeCamera(): void {
-    const d = 60;
-    const off = new THREE.Vector3(
-      Math.cos(ELEVATION) * Math.sin(AZIMUTH),
-      Math.sin(ELEVATION),
-      Math.cos(ELEVATION) * Math.cos(AZIMUTH),
-    ).multiplyScalar(d);
+    const off = viewDirection().multiplyScalar(60);
     this.camera.position.copy(this.target).add(off);
     this.camera.lookAt(this.target);
   }
@@ -241,7 +272,12 @@ export class IsoScene {
     const ndc = new THREE.Vector2((px / window.innerWidth) * 2 - 1, -(py / window.innerHeight) * 2 + 1);
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, this.camera);
-    const hits = ray.intersectObjects([...this.buildingGroups.values()], true);
+    const targets: THREE.Object3D[] = [];
+    for (const [id, g] of this.buildingGroups) {
+      const sp = this.sprites.get(id);
+      targets.push(sp && sp.visible ? sp : g);
+    }
+    const hits = ray.intersectObjects(targets, true);
     const hit = hits.find((h) => h.object.userData.buildingId !== undefined);
     this.onSelect(hit ? (hit.object.userData.buildingId as number) : null);
   }
@@ -253,6 +289,11 @@ export class IsoScene {
     for (const s of this.spinners) s.rotation.z += dt * 0.6;
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+/** Hướng từ tâm nhìn tới camera (vector đơn vị). */
+function viewDirection(): THREE.Vector3 {
+  return new THREE.Vector3(Math.cos(ELEVATION) * Math.sin(AZIMUTH), Math.sin(ELEVATION), Math.cos(ELEVATION) * Math.cos(AZIMUTH));
 }
 
 /** Ấn triện chu sa với một chữ Hán, vẽ bằng canvas 2D. */

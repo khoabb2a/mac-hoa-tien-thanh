@@ -20,6 +20,7 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 
 ## Must keep
 - Follow the LINE DRAWING exactly: same silhouette, proportions, footprint, number of pillars, roof tiers and camera angle (isometric, viewed from the front-right, about 30° downward, orthographic — no perspective).
+- True 2:1 isometric projection: a square footprint appears as a diamond exactly twice as wide as it is tall; a circle on the ground appears as an ellipse whose height is exactly half its width. Keep heights the same as in the line drawing — do not make anything taller or thicker.
 - Single building only, centered, filling about 80% of the frame. The stone base is the lowest thing drawn.
 - Background: pure flat white (#FFFFFF), no paper texture behind the building, no ground, no shadow on the ground, no scenery, no clouds, no people, no text, no seal stamp, no border or frame.
 
@@ -31,7 +32,8 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 - Lighting matches the TONAL REFERENCE: light from the upper left, shadows on the right faces.
 
 ## Palette (strict)
-- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls and stone.
+- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls.
+- Stone bases and platforms: light-to-mid grey ink wash with visible dry-brush texture and a dark outline — never pure white, so they stand out on a beige paper map.
 - 8%: muted jade green (#7FA38A) or stone blue (#3E6C8C) accents only.
 - 2%: cinnabar red (#C8372D) only on pillars, doors or lanterns; a tiny touch of ochre gold (#C9A24A) allowed on the roof finial.
 - No saturated colors, no gradients that look digital, no glossy 3D rendering look.
@@ -55,6 +57,7 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 
 ## Must keep
 - Follow the LINE DRAWING exactly: same silhouette, proportions, footprint, number of pillars, roof tiers and camera angle (isometric, viewed from the front-right, about 30° downward, orthographic — no perspective).
+- True 2:1 isometric projection: a square footprint appears as a diamond exactly twice as wide as it is tall; a circle on the ground appears as an ellipse whose height is exactly half its width. Keep heights the same as in the line drawing — do not make anything taller or thicker.
 - Single building only, centered, filling about 80% of the frame. The stone base is the lowest thing drawn.
 - Background: pure flat white (#FFFFFF), no paper texture behind the building, no ground, no shadow on the ground, no scenery, no clouds, no people, no text, no seal stamp, no border or frame.
 
@@ -66,7 +69,8 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 - Lighting matches the TONAL REFERENCE: light from the upper left, shadows on the right faces.
 
 ## Palette (strict)
-- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls and stone.
+- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls.
+- Stone bases and platforms: light-to-mid grey ink wash with visible dry-brush texture and a dark outline — never pure white, so they stand out on a beige paper map.
 - 8%: muted jade green (#7FA38A) or stone blue (#3E6C8C) accents only.
 - 2%: cinnabar red (#C8372D) only on pillars, doors or lanterns; a tiny touch of ochre gold (#C9A24A) allowed on the roof finial.
 - No saturated colors, no gradients that look digital, no glossy 3D rendering look.
@@ -90,6 +94,7 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 
 ## Must keep
 - Follow the LINE DRAWING exactly: same silhouette, proportions, footprint, number of pillars, roof tiers and camera angle (isometric, viewed from the front-right, about 30° downward, orthographic — no perspective).
+- True 2:1 isometric projection: a square footprint appears as a diamond exactly twice as wide as it is tall; a circle on the ground appears as an ellipse whose height is exactly half its width. Keep heights the same as in the line drawing — do not make anything taller or thicker.
 - Single building only, centered, filling about 80% of the frame. The stone base is the lowest thing drawn.
 - Background: pure flat white (#FFFFFF), no paper texture behind the building, no ground, no shadow on the ground, no scenery, no clouds, no people, no text, no seal stamp, no border or frame.
 
@@ -101,13 +106,14 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 - Lighting matches the TONAL REFERENCE: light from the upper left, shadows on the right faces.
 
 ## Palette (strict)
-- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls and stone.
+- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls.
+- Stone bases and platforms: light-to-mid grey ink wash with visible dry-brush texture and a dark outline — never pure white, so they stand out on a beige paper map.
 - 8%: muted jade green (#7FA38A) or stone blue (#3E6C8C) accents only.
 - 2%: cinnabar red (#C8372D) only on pillars, doors or lanterns; a tiny touch of ochre gold (#C9A24A) allowed on the roof finial.
 - No saturated colors, no gradients that look digital, no glossy 3D rendering look.
 
 ## Subject
-Qi Gathering Array (Tụ Linh Trận 聚靈陣): a round carved stone platform engraved with a ring of talisman runes and a faint jade-green circle, a slim jade obelisk in the center topped with a small floating gold crystal. Wisps of pale ink mist rise from the runes. No building walls or roof.
+Qi Gathering Array (Tụ Linh Trận 聚靈陣): a FLAT, LOW round stone disc lying on the ground like a millstone — its thickness is only about one tenth of its diameter, NOT a tall drum or pedestal. On its top surface: a carved ring of Chinese seal-script talisman characters and a faint jade-green circle. In the center a slim jade obelisk, topped with a small floating gold crystal. Wisps of pale ink mist rise from the runes. No walls, no roof.
 
 Image 1 is the LINE DRAWING: follow its silhouette, proportions and camera angle exactly.
 Image 2 is the TONAL REFERENCE: use only its light and shadow, do NOT copy its flat colors.
@@ -125,6 +131,7 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 
 ## Must keep
 - Follow the LINE DRAWING exactly: same silhouette, proportions, footprint, number of pillars, roof tiers and camera angle (isometric, viewed from the front-right, about 30° downward, orthographic — no perspective).
+- True 2:1 isometric projection: a square footprint appears as a diamond exactly twice as wide as it is tall; a circle on the ground appears as an ellipse whose height is exactly half its width. Keep heights the same as in the line drawing — do not make anything taller or thicker.
 - Single building only, centered, filling about 80% of the frame. The stone base is the lowest thing drawn.
 - Background: pure flat white (#FFFFFF), no paper texture behind the building, no ground, no shadow on the ground, no scenery, no clouds, no people, no text, no seal stamp, no border or frame.
 
@@ -136,7 +143,8 @@ Paint ONE building as a game sprite for a mobile isometric city-builder set in a
 - Lighting matches the TONAL REFERENCE: light from the upper left, shadows on the right faces.
 
 ## Palette (strict)
-- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls and stone.
+- 90%: ink black-to-grey tones and warm paper beige (#EFE6D2) on the walls.
+- Stone bases and platforms: light-to-mid grey ink wash with visible dry-brush texture and a dark outline — never pure white, so they stand out on a beige paper map.
 - 8%: muted jade green (#7FA38A) or stone blue (#3E6C8C) accents only.
 - 2%: cinnabar red (#C8372D) only on pillars, doors or lanterns; a tiny touch of ochre gold (#C9A24A) allowed on the roof finial.
 - No saturated colors, no gradients that look digital, no glossy 3D rendering look.

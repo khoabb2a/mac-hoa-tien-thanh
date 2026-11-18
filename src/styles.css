@@ -60,6 +60,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   border-radius: 22px; background: rgba(239, 230, 210, 0.92); border: 1.5px solid var(--ink);
   font-size: 14px; font-weight: 600;
 }
+.chip.art { bottom: calc(var(--safe-bottom) + 140px); }
 .chip.on { background: var(--thach-thanh); color: var(--paper); border-color: var(--thach-thanh); }
 .glyph { font-family: 'Noto Serif SC', 'Songti SC', serif; font-weight: 700; }
 
