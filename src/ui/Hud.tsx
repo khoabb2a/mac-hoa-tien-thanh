@@ -4,11 +4,14 @@ import { getLang, onLangChange, setLang, t } from '../i18n';
 import type { ActionOutcome, Preview, Tool } from '../render/scene';
 import { SPRITE_URL } from '../render/sprites';
 import { BUILD_COST, BUILD_MENU, ROAD_COST } from '../sim/economy';
+import { FENG_SHUI_BONUS } from '../sim/fengShui';
 import type { SpeedIndex } from '../sim/time';
 import type { World } from '../sim/world';
+import { ZONE_COST, ZONES, type ZoneType } from '../sim/zones';
 
 export interface HudActions {
   setTool: (tool: Tool) => void;
+  setSpeed: (s: SpeedIndex) => void;
   confirm: () => ActionOutcome | null;
   setOverlay: (on: boolean) => void;
   setArt: (on: boolean) => void;
@@ -27,6 +30,7 @@ interface Props {
 const NAV = ['build', 'zone', 'disciples', 'encounters', 'sect'] as const;
 type NavKey = (typeof NAV)[number];
 const NAV_GLYPH: Record<NavKey, string> = { build: '築', zone: '域', disciples: '徒', encounters: '緣', sect: '宗' };
+const ZONE_GLYPH: Record<ZoneType, string> = { cu: '居', thi: '市', dien: '田' };
 
 /** HUD màn dọc một tay (GDD 9.2): thanh trên, chip nổi, thanh xác nhận, bảng cuộn trục, 5 nút dưới. */
 export function Hud({ world, selected, preview, actions }: Props) {
@@ -34,7 +38,7 @@ export function Hud({ world, selected, preview, actions }: Props) {
   const [overlay, setOverlay] = useState(false);
   const [art, setArt] = useState(true);
   const [newsIdx, setNewsIdx] = useState(0);
-  const [panel, setPanel] = useState<'none' | 'build' | 'sect'>('none');
+  const [panel, setPanel] = useState<'none' | 'build' | 'zone' | 'sect' | 'demand'>('none');
   const [tool, setToolState] = useState<Tool>({ kind: 'none' });
   const [toast, setToast] = useState<{ text: string; bad: boolean } | null>(null);
   const toastTimer = useRef<number>(0);
@@ -66,12 +70,14 @@ export function Hud({ world, selected, preview, actions }: Props) {
     if (!r.ok) return say(t(`reason.${r.reason}`), true);
     if (r.kind === 'build' && r.type) say(t('toast.built', { name: t(`building.${r.type}`), cost: r.cost }));
     else if (r.kind === 'road') say(t('toast.road', { cost: r.cost }));
+    else if (r.kind === 'zone' && r.zone) say(t('toast.zoned', { n: r.tiles ?? 0, name: t(`zone.${r.zone}`), cost: r.cost }));
     else if (r.kind === 'demolish') say(t('toast.demolished', { n: -r.cost }));
   };
 
   const onNav = (k: NavKey) => {
     if (k === 'build') return setPanel(panel === 'build' ? 'none' : 'build');
     if (k === 'sect') return setPanel(panel === 'sect' ? 'none' : 'sect');
+    if (k === 'zone') return setPanel(panel === 'zone' ? 'none' : 'zone');
     say(t('toast.soon'));
   };
 
@@ -79,7 +85,7 @@ export function Hud({ world, selected, preview, actions }: Props) {
   const coverage = Math.round(world.linhKhi.coverage * 100);
   const sel = selected === null ? null : world.grid.buildings.find((b) => b.id === selected) ?? null;
   const selQi = sel ? Math.round(world.linhKhi.building.get(sel.id) ?? 0) : 0;
-  const setSpeed = (s: SpeedIndex) => { c.speed = s; force((n) => n + 1); };
+  const setSpeed = (s: SpeedIndex) => { actions.setSpeed(s); force((n) => n + 1); };
 
   return (
     <div class="hud">
@@ -110,6 +116,10 @@ export function Hud({ world, selected, preview, actions }: Props) {
             <span class="glyph">眼</span> {t('overlay.thienNhan')}
           </button>
         </>
+      )}
+
+      {tool.kind === 'none' && (panel === 'none' || panel === 'demand') && (
+        <DemandBars world={world} open={panel === 'demand'} onToggle={() => setPanel(panel === 'demand' ? 'none' : 'demand')} />
       )}
 
       {sel && tool.kind === 'none' && panel === 'none' && (
@@ -144,6 +154,18 @@ export function Hud({ world, selected, preview, actions }: Props) {
         </Sheet>
       )}
 
+      {panel === 'zone' && (
+        <Sheet title={t('panel.zone')} onClose={() => setPanel('none')}>
+          <p class="note">{t('zone.note')}</p>
+          <div class="grid">
+            {ZONES.map((z) => (
+              <Item glyph={ZONE_GLYPH[z]} swatch={z} name={t(`zone.${z}`)} cost={t('cost.perTile', { n: ZONE_COST })} onPick={() => chooseTool({ kind: 'zone', type: z })} />
+            ))}
+            <Item glyph="拆" name={t('zone.clear')} onPick={() => chooseTool({ kind: 'demolish' })} />
+          </div>
+        </Sheet>
+      )}
+
       {panel === 'sect' && <SectPanel actions={actions} onClose={() => setPanel('none')} say={say} />}
 
       {toast && <div class={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
@@ -151,7 +173,13 @@ export function Hud({ world, selected, preview, actions }: Props) {
       <nav class="bottombar">
         {NAV.map((k) => (
           <button
-            class={(k === 'build' && (panel === 'build' || tool.kind !== 'none')) || (k === 'sect' && panel === 'sect') ? 'on' : ''}
+            class={
+              (k === 'build' && (panel === 'build' || tool.kind === 'build' || tool.kind === 'road')) ||
+              (k === 'zone' && (panel === 'zone' || tool.kind === 'zone')) ||
+              (k === 'sect' && panel === 'sect')
+                ? 'on'
+                : ''
+            }
             onClick={() => onNav(k)}
           >
             <span class="glyph">{NAV_GLYPH[k]}</span>
@@ -175,7 +203,13 @@ function ActionBar({ tool, preview, onConfirm, onDone }: { tool: Tool; preview: 
     hint = t('hint.demolish');
     confirmLabel = t('action.confirmDemolish');
   }
-  const title = tool.kind === 'build' ? t(`building.${tool.type}`) : t(`tool.${tool.kind}`);
+  if (tool.kind === 'zone') {
+    hint = preview.ready ? t('hint.zoneReady') : preview.hasStart ? t('hint.zoneEnd') : t('hint.zoneStart');
+    confirmLabel = t('action.confirmZone');
+  }
+  const title =
+    tool.kind === 'build' ? t(`building.${tool.type}`) : tool.kind === 'zone' ? t(`zone.${tool.type}`) : t(`tool.${tool.kind}`);
+  const fs = preview.fengShui;
   const bad = preview.ready && !preview.ok && !!preview.reason;
   return (
     <div class="actionbar">
@@ -183,6 +217,15 @@ function ActionBar({ tool, preview, onConfirm, onDone }: { tool: Tool; preview: 
         <strong>{title}</strong>
         {preview.cost > 0 && <span class="cost">石 {preview.cost}</span>}
         <div class={`status ${bad ? 'bad' : ''}`}>{bad ? t(`reason.${preview.reason}`) : hint}</div>
+        {fs && (
+          <div class="fs">
+            {t('fs.label')}: <b>{t(`fs.${fs.score}`)}</b>
+            <span class={fs.back ? 'yes' : ''} title={t('fs.back')}>山</span>
+            <span class={fs.water ? 'yes' : ''} title={t('fs.water')}>水</span>
+            <span class={fs.vein ? 'yes' : ''} title={t('fs.vein')}>脈</span>
+            {fs.score > 0 && <span class="bonus">{t('fs.bonus', { n: Math.round(fs.score * FENG_SHUI_BONUS * 100) })}</span>}
+          </div>
+        )}
       </div>
       <div class="buttons">
         <button class="ghost" onClick={onDone}>{t('action.done')}</button>
@@ -204,10 +247,10 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function Item(p: { glyph?: string; img?: string; name: string; cost?: string; disabled?: boolean; onPick: () => void }) {
+function Item(p: { glyph?: string; img?: string; swatch?: ZoneType; name: string; cost?: string; disabled?: boolean; onPick: () => void }) {
   return (
     <button class="item" disabled={p.disabled} onClick={p.onPick}>
-      <span class="thumb">{p.img ? <img src={p.img} alt="" /> : <span class="glyph">{p.glyph}</span>}</span>
+      <span class={`thumb ${p.swatch ? `swatch-${p.swatch}` : ''}`}>{p.img ? <img src={p.img} alt="" /> : <span class="glyph">{p.glyph}</span>}</span>
       <span class="name">{p.name}</span>
       {p.cost && <span class="cost">石 {p.cost}</span>}
     </button>
@@ -238,6 +281,38 @@ function SectPanel({ actions, onClose, say }: { actions: HudActions; onClose: ()
         </button>
       </div>
     </Sheet>
+  );
+}
+
+/** Tam Tài Khí (≈ thanh RCI của SimCity): ba cột mực Cư – Thị – Điền; lên = đang thiếu, xuống = đang thừa. */
+function DemandBars({ world, open, onToggle }: { world: World; open: boolean; onToggle: () => void }) {
+  const d = world.stats.demand;
+  return (
+    <div class="demand">
+      {open && (
+        <div class="demand-pop">
+          <strong>{t('demand.title')}</strong>
+          <div>{t('demand.residents', { n: world.stats.residents })}</div>
+          <div>{t('demand.jobs', { a: world.stats.thiJobs, b: world.stats.dienJobs })}</div>
+          <div>{t('demand.income', { n: world.lastIncome })}</div>
+          <p class="note">{t('demand.help')}</p>
+        </div>
+      )}
+      <button class="demand-bars" onClick={onToggle} aria-label={t('demand.title')}>
+        {ZONES.map((z) => {
+          const v = d[z];
+          const h = Math.round(Math.abs(v) * 26);
+          return (
+            <span class={`bar bar-${z}`}>
+              <span class="track">
+                <span class={`fill ${v >= 0 ? 'up' : 'down'}`} style={{ height: `${h}px` }} />
+              </span>
+              <span class="glyph">{ZONE_GLYPH[z]}</span>
+            </span>
+          );
+        })}
+      </button>
+    </div>
   );
 }
 

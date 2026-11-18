@@ -1,18 +1,23 @@
 import { BUILD_COST, BASE_POPULATION, HOUSING, INCOME_BASE, INCOME_PER_POWERED, REFUND_RATE, ROAD_COST } from './economy';
+import { FENG_SHUI_BONUS, fengShuiAt } from './fengShui';
 import { Grid, Terrain, type BuildingType, type GridSave } from './grid';
 import { computeLinhKhi, POWERED_THRESHOLD, type LinhKhiResult } from './linhKhi';
+import { Rng } from './rng';
 import { TietKhiClock, type SpeedIndex } from './time';
+import { canZone, growTown, TAX, townStats, ZONE_COST, ZONE_ID, type TownStats, type ZoneType } from './zones';
 
 export type ActionFail = 'blocked' | 'funds' | 'nothing';
 export type ActionResult = { ok: true; cost: number } | { ok: false; reason: ActionFail; cost: number };
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export interface WorldSave {
   v: number;
   elapsed: number;
   speed: SpeedIndex;
   linhThach: number;
   grid: GridSave;
+  /** v2: trạng thái bộ sinh ngẫu nhiên, để nhà mọc giống nhau sau khi tải lại. */
+  rng?: number;
 }
 
 /** Trạng thái thế giới + luật chơi. Logic thuần (GDD 3.3), sau này chạy trong Web Worker. */
@@ -22,15 +27,26 @@ export class World {
   linhKhi: LinhKhiResult;
   linhThach: number;
   population = 0;
+  stats: TownStats;
+  /** Thu nhập của tiết khí vừa qua (để HUD hiện). */
+  lastIncome = 0;
+  readonly rng: Rng;
+  /**
+   * Bản sao thụ động trên luồng chính khi mô phỏng chạy trong Worker: chỉ cho đồng hồ trôi
+   * để HUD mượt, còn mọi thay đổi thật đến từ applySave() theo ảnh chụp của Worker.
+   */
+  passive = false;
   /** Tăng mỗi khi lưới thay đổi, để phần vẽ biết cần dựng lại. */
   revision = 0;
   private listeners = new Set<() => void>();
 
-  constructor(grid: Grid, linhThach = 500, clock = new TietKhiClock()) {
+  constructor(grid: Grid, linhThach = 500, clock = new TietKhiClock(), rng = new Rng()) {
     this.grid = grid;
     this.linhThach = linhThach;
     this.clock = clock;
+    this.rng = rng;
     this.linhKhi = computeLinhKhi(grid);
+    this.stats = townStats(grid, this.sectCount());
     this.population = this.computePopulation();
   }
 
@@ -39,12 +55,22 @@ export class World {
   /** Gọi mỗi khung hình với thời gian thực đã trôi (giây). */
   update(realSeconds: number): void {
     const changed = this.clock.advance(realSeconds);
+    if (this.passive) return;
     for (let i = 0; i < changed; i++) this.onNewTerm();
   }
 
+  /** Mỗi tiết khí: phàm trần mọc/suy, rồi thu cống phẩm và sản lượng tông môn. */
   private onNewTerm(): void {
-    const powered = [...this.linhKhi.building.values()].filter((v) => v >= POWERED_THRESHOLD).length;
-    this.linhThach += INCOME_BASE + powered * INCOME_PER_POWERED;
+    growTown(this.grid, this.linhKhi.road, this.stats.demand, this.rng);
+    this.changed(false);
+    let income = INCOME_BASE;
+    for (const b of this.grid.buildings) {
+      if ((this.linhKhi.building.get(b.id) ?? 0) < POWERED_THRESHOLD) continue;
+      income += INCOME_PER_POWERED * (1 + FENG_SHUI_BONUS * fengShuiAt(this.grid, b.x, b.y, b.w, b.h).score);
+    }
+    income += this.stats.residents * TAX.resident + this.stats.thiJobs * TAX.thi + this.stats.dienJobs * TAX.dien;
+    this.lastIncome = Math.floor(income);
+    this.linhThach += this.lastIncome;
     this.emit();
   }
 
@@ -88,7 +114,39 @@ export class World {
     return r;
   }
 
-  /** Phá công trình hoặc đường ở ô (x, y); hoàn lại một phần giá. Trả về số linh thạch hoàn (âm = không có gì). */
+  /** Các ô trong hình chữ nhật (hai góc bất kỳ) có thể quy hoạch thành `type`. */
+  zoneTiles(type: ZoneType, ax: number, ay: number, bx: number, by: number): Array<[number, number]> {
+    const out: Array<[number, number]> = [];
+    const id = ZONE_ID[type];
+    for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++)
+      for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++)
+        if (canZone(this.grid, x, y) && this.grid.zone[this.grid.idx(x, y)] !== id) out.push([x, y]);
+    return out;
+  }
+
+  previewZone(type: ZoneType, ax: number, ay: number, bx: number, by: number): ActionResult & { tiles: number } {
+    const tiles = this.zoneTiles(type, ax, ay, bx, by).length;
+    const cost = tiles * ZONE_COST;
+    if (tiles === 0) return { ok: false, reason: 'nothing', cost, tiles };
+    if (this.linhThach < cost) return { ok: false, reason: 'funds', cost, tiles };
+    return { ok: true, cost, tiles };
+  }
+
+  /** Quy hoạch vùng; đổi loại vùng thì nhà cũ trên ô bị dỡ (cấp về 0). */
+  zone(type: ZoneType, ax: number, ay: number, bx: number, by: number): ActionResult {
+    const r = this.previewZone(type, ax, ay, bx, by);
+    if (!r.ok) return r;
+    for (const [x, y] of this.zoneTiles(type, ax, ay, bx, by)) {
+      const i = this.grid.idx(x, y);
+      this.grid.zone[i] = ZONE_ID[type];
+      this.grid.level[i] = 0;
+    }
+    this.linhThach -= r.cost;
+    this.changed();
+    return { ok: true, cost: r.cost };
+  }
+
+  /** Phá công trình, đường hoặc xóa vùng ở ô (x, y); hoàn lại một phần giá công trình/đường. */
   demolishAt(x: number, y: number): ActionResult {
     const b = this.grid.buildingAt(x, y);
     if (b) {
@@ -104,20 +162,45 @@ export class World {
       this.changed();
       return { ok: true, cost: -refund };
     }
+    if (this.grid.inBounds(x, y) && this.grid.zone[this.grid.idx(x, y)]) {
+      const i = this.grid.idx(x, y);
+      this.grid.zone[i] = 0;
+      this.grid.level[i] = 0;
+      this.changed();
+      return { ok: true, cost: 0 };
+    }
     return { ok: false, reason: 'nothing', cost: 0 };
   }
 
   // ---------- lưu / khôi phục ----------
 
   toSave(): WorldSave {
-    return { v: SAVE_VERSION, elapsed: this.clock.elapsed, speed: this.clock.speed, linhThach: this.linhThach, grid: this.grid.toJSON() };
+    return {
+      v: SAVE_VERSION,
+      elapsed: this.clock.elapsed,
+      speed: this.clock.speed,
+      linhThach: this.linhThach,
+      grid: this.grid.toJSON(),
+      rng: this.rng.state,
+    };
   }
 
+  /** Đọc bản lưu v1 (chưa có vùng) hoặc v2. */
   static fromSave(s: WorldSave): World {
-    if (s.v !== SAVE_VERSION) throw new Error(`save version ${s.v} not supported`);
+    if (s.v !== 1 && s.v !== SAVE_VERSION) throw new Error(`save version ${s.v} not supported`);
     const clock = new TietKhiClock(s.elapsed);
     clock.speed = s.speed;
-    return new World(Grid.fromJSON(s.grid), s.linhThach, clock);
+    return new World(Grid.fromJSON(s.grid), s.linhThach, clock, new Rng(s.rng));
+  }
+
+  /** Thay toàn bộ trạng thái bằng bản lưu (cùng kích thước bản đồ), giữ nguyên các tham chiếu. */
+  applySave(s: WorldSave): void {
+    this.grid.loadFrom(s.grid);
+    this.clock.elapsed = s.elapsed;
+    this.clock.speed = s.speed;
+    this.linhThach = s.linhThach;
+    if (s.rng !== undefined) this.rng.state = s.rng;
+    this.changed();
   }
 
   // ---------- nội bộ ----------
@@ -127,17 +210,22 @@ export class World {
     return () => this.listeners.delete(fn);
   }
 
+  private sectCount(): number {
+    return this.grid.buildings.length;
+  }
+
   private computePopulation(): number {
-    let p = BASE_POPULATION;
+    let p = BASE_POPULATION + this.stats.residents;
     for (const b of this.grid.buildings) p += HOUSING[b.type] ?? 0;
     return p;
   }
 
-  private changed(): void {
+  private changed(notify = true): void {
     this.revision++;
     this.linhKhi = computeLinhKhi(this.grid);
+    this.stats = townStats(this.grid, this.sectCount());
     this.population = this.computePopulation();
-    this.emit();
+    if (notify) this.emit();
   }
 
   private emit(): void {

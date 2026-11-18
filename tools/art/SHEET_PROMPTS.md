@@ -255,3 +255,111 @@ Image 1 is the LAYOUT GUIDE only — do not draw it.
 Output a square 1:1 image.
 ```
 
+
+# Nhà phàm trần — sheet 3×3 (hàng = cấp nhà)
+
+Ba sheet cho ba vùng Tam Tài Khí. Khác sheet cây đá: **hàng trên là nhà cấp 1 (nhỏ nhất), hàng dưới là cấp 3 (lớn nhất)**.
+Đính kèm `art/blockout/sheet_guide_1x1_h12.png`. Cắt bằng `python tools/art/sheet.py art/source/cu_sheet_v1.png cu --houses`.
+
+## nha_cu — Nhà phàm trần — vùng Phàm Cư (dân ở)
+
+Đính kèm: `art/blockout/sheet_guide_1x1_h12.png` (Image 1) · Tỉ lệ 1:1
+
+```text
+Paint a SPRITE SHEET for a mobile isometric city-builder set in a xianxia (Chinese cultivation fantasy) world: a 3×3 grid showing NINE different variations of the same kind of building, in three upgrade levels, so the game can scatter them without visible repetition.
+
+Must keep:
+- Image 1 is the LAYOUT GUIDE: nine equal cells, each with a grey diamond (the ground footprint, true 2:1 isometric, viewed from the front-right, 30° downward, orthographic — no perspective) and a dashed box (the maximum height). Put exactly ONE object in each cell, standing on that cell's diamond, inside its dashed box.
+- Every object stays fully inside its own cell with wide white margins — no leaf, branch or petal may cross into a neighbouring cell. Keep the cells in a strict 3×3 layout.
+- Do NOT draw the guide: no diamonds, no dashed boxes, no cell borders, no grid lines, no ground under the objects.
+- Size by ROW, not by column: row 1 = level 1 (smallest), row 2 = level 2, row 3 = level 3 (largest), exactly as described below. Within each row the three buildings are similar in size but different in design.
+- All nine share the same camera angle, the same light from the upper left, the same brush style and palette.
+- Background: pure flat white (#FFFFFF), no paper texture, no shadows on the ground, no text, no numbers, no seal stamp, no frame.
+
+Style:
+- Traditional Chinese ink-wash painting (shuimo) on xuan paper, detailed like a Song-dynasty landscape painting.
+- Confident brush outlines of varying thickness, dry-brush texture strokes on rock and bark, soft wet washes, slight ink bleed.
+
+Palette (strict):
+- Mostly ink black-to-grey tones. Muted jade green (#7FA38A) and stone blue (#3E6C8C) washes for foliage and moss. Ochre (#C9A24A) only as a tiny accent. Soft pale pink only for peach blossoms.
+- No saturated colors, no digital gradients, no glossy 3D look.
+
+## Subject
+Mortal village houses at the foot of an immortal sect mountain, 1×1 tile each. Simple Song-dynasty rural architecture: rammed-earth or whitewashed walls, wooden posts, small courtyards.
+
+Row 1 — level 1 THATCHED COTTAGES (thảo xá), small and humble, about 40% of the dashed box height: (1) thatched hut with a woven fence, (2) thatched cottage with a drying rack of herbs, (3) tiny hut with a water jar and a hoe by the door.
+Row 2 — level 2 TILED HOUSES (trạch viện), about 65% of the box height: (4) tiled-roof house with a small walled courtyard, (5) L-shaped tiled house with a well, (6) tiled house with a bamboo grove behind a low wall.
+Row 3 — level 3 TWO-STOREY RESIDENCES (lâu các), filling most of the box: (7) two-storey house with a balcony and hanging lanterns, (8) courtyard mansion with an upturned-eave gate, (9) two-storey house with a small tower room on top.
+
+Image 1 is the LAYOUT GUIDE only — do not draw it.
+Output a square 1:1 image.
+```
+
+## nha_thi — Cửa hàng — vùng Phường Thị (buôn bán)
+
+Đính kèm: `art/blockout/sheet_guide_1x1_h12.png` (Image 1) · Tỉ lệ 1:1
+
+```text
+Paint a SPRITE SHEET for a mobile isometric city-builder set in a xianxia (Chinese cultivation fantasy) world: a 3×3 grid showing NINE different variations of the same kind of building, in three upgrade levels, so the game can scatter them without visible repetition.
+
+Must keep:
+- Image 1 is the LAYOUT GUIDE: nine equal cells, each with a grey diamond (the ground footprint, true 2:1 isometric, viewed from the front-right, 30° downward, orthographic — no perspective) and a dashed box (the maximum height). Put exactly ONE object in each cell, standing on that cell's diamond, inside its dashed box.
+- Every object stays fully inside its own cell with wide white margins — no leaf, branch or petal may cross into a neighbouring cell. Keep the cells in a strict 3×3 layout.
+- Do NOT draw the guide: no diamonds, no dashed boxes, no cell borders, no grid lines, no ground under the objects.
+- Size by ROW, not by column: row 1 = level 1 (smallest), row 2 = level 2, row 3 = level 3 (largest), exactly as described below. Within each row the three buildings are similar in size but different in design.
+- All nine share the same camera angle, the same light from the upper left, the same brush style and palette.
+- Background: pure flat white (#FFFFFF), no paper texture, no shadows on the ground, no text, no numbers, no seal stamp, no frame.
+
+Style:
+- Traditional Chinese ink-wash painting (shuimo) on xuan paper, detailed like a Song-dynasty landscape painting.
+- Confident brush outlines of varying thickness, dry-brush texture strokes on rock and bark, soft wet washes, slight ink bleed.
+
+Palette (strict):
+- Mostly ink black-to-grey tones. Muted jade green (#7FA38A) and stone blue (#3E6C8C) washes for foliage and moss. Ochre (#C9A24A) only as a tiny accent. Soft pale pink only for peach blossoms.
+- No saturated colors, no digital gradients, no glossy 3D look.
+
+## Subject
+Market buildings of a small xianxia town, 1×1 tile each. Song-dynasty shops with shop flags, cloth awnings and goods on display.
+
+Row 1 — level 1 STALLS, small, about 40% of the dashed box height: (1) noodle stall with a cloth awning and benches, (2) herb stall with baskets, (3) street stall with pottery and a red shop flag.
+Row 2 — level 2 SHOPS, about 65% of the box height: (4) tea house with an open front and a hanging sign board, (5) cloth shop with bolts of silk at the door, (6) talisman and paper shop with yellow paper hanging.
+Row 3 — level 3 TWO-STOREY TRADING HOUSES, filling most of the box: (7) two-storey restaurant with red lanterns and a tall shop flag, (8) spirit-stone exchange with a stone lion at the door, (9) two-storey inn with a balcony.
+
+Image 1 is the LAYOUT GUIDE only — do not draw it.
+Output a square 1:1 image.
+```
+
+## nha_dien — Ruộng nương — vùng Linh Điền (việc làm ruộng)
+
+Đính kèm: `art/blockout/sheet_guide_1x1_h12.png` (Image 1) · Tỉ lệ 1:1
+
+```text
+Paint a SPRITE SHEET for a mobile isometric city-builder set in a xianxia (Chinese cultivation fantasy) world: a 3×3 grid showing NINE different variations of the same kind of building, in three upgrade levels, so the game can scatter them without visible repetition.
+
+Must keep:
+- Image 1 is the LAYOUT GUIDE: nine equal cells, each with a grey diamond (the ground footprint, true 2:1 isometric, viewed from the front-right, 30° downward, orthographic — no perspective) and a dashed box (the maximum height). Put exactly ONE object in each cell, standing on that cell's diamond, inside its dashed box.
+- Every object stays fully inside its own cell with wide white margins — no leaf, branch or petal may cross into a neighbouring cell. Keep the cells in a strict 3×3 layout.
+- Do NOT draw the guide: no diamonds, no dashed boxes, no cell borders, no grid lines, no ground under the objects.
+- Size by ROW, not by column: row 1 = level 1 (smallest), row 2 = level 2, row 3 = level 3 (largest), exactly as described below. Within each row the three buildings are similar in size but different in design.
+- All nine share the same camera angle, the same light from the upper left, the same brush style and palette.
+- Background: pure flat white (#FFFFFF), no paper texture, no shadows on the ground, no text, no numbers, no seal stamp, no frame.
+
+Style:
+- Traditional Chinese ink-wash painting (shuimo) on xuan paper, detailed like a Song-dynasty landscape painting.
+- Confident brush outlines of varying thickness, dry-brush texture strokes on rock and bark, soft wet washes, slight ink bleed.
+
+Palette (strict):
+- Mostly ink black-to-grey tones. Muted jade green (#7FA38A) and stone blue (#3E6C8C) washes for foliage and moss. Ochre (#C9A24A) only as a tiny accent. Soft pale pink only for peach blossoms.
+- No saturated colors, no digital gradients, no glossy 3D look.
+
+## Subject
+Spirit-farm plots of a xianxia village, 1×1 tile each, seen as small isometric dioramas: neat raised field beds of glowing-green spirit rice and herbs, irrigation channels, farm structures.
+
+Row 1 — level 1 SMALL PLOTS, low, about 25% of the dashed box height: (1) three rows of young spirit rice in wet soil, (2) small vegetable and herb beds with a bamboo fence, (3) plot with a scarecrow.
+Row 2 — level 2 FIELDS WITH A HUT, about 45% of the box height: (4) rice field with a small thatched field hut, (5) herb field with a water wheel on a channel, (6) field with stacked harvest sheaves.
+Row 3 — level 3 TERRACED FARMS, about 65% of the box height: (7) terraced spirit-rice paddies with a granary, (8) herb garden with a drying pavilion, (9) field with a round granary and a small shrine.
+
+Image 1 is the LAYOUT GUIDE only — do not draw it.
+Output a square 1:1 image.
+```
+

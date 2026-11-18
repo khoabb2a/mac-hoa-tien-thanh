@@ -104,7 +104,7 @@ export function decorFor(grid: Grid): DecorItem[] {
     }
 
   // Cỏ trống: cây thưa, tránh sát đường và công trình để không che khuất.
-  const blocked = (i: number) => grid.road[i] === 1 || grid.occupant[i] !== -1;
+  const blocked = (i: number) => grid.road[i] === 1 || grid.occupant[i] !== -1 || grid.zone[i] !== 0;
   for (let y = 0; y < grid.height; y++)
     for (let x = 0; x < grid.width; x++) {
       const i = grid.idx(x, y);

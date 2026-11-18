@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { registerSW } from 'virtual:pwa-register';
 import { getLang, setLang } from './i18n';
 import { clearGame, exportGame, loadGame, readSaveFile, saveGame } from './platform/save';
+import { startSim } from './platform/simClient';
 import { IsoScene, type Preview } from './render/scene';
 import { createDemoWorld, World } from './sim/world';
 import { Hud, type HudActions } from './ui/Hud';
@@ -17,13 +18,16 @@ function isLowEnd(): boolean {
 async function boot(): Promise<void> {
   setLang(getLang());
 
-  let world: World;
-  const saved = await loadGame();
+  let save = (await loadGame()) ?? createDemoWorld().toSave();
   try {
-    world = saved ? World.fromSave(saved) : createDemoWorld();
+    World.fromSave(save);
   } catch {
-    world = createDemoWorld(); // bản lưu hỏng hoặc khác phiên bản
+    save = createDemoWorld().toSave(); // bản lưu hỏng hoặc khác phiên bản
   }
+  // Mô phỏng chạy trong Web Worker (máy yếu không giật khi nhà mọc); không được thì chạy tại chỗ.
+  const sim = await startSim(save);
+  const world = sim.world;
+  document.documentElement.dataset.sim = sim.mode;
 
   // Tự lưu: sau mỗi thay đổi (gom trong 1,5 giây), mỗi 20 giây, và khi rời app.
   let saveTimer = 0;
@@ -41,7 +45,7 @@ async function boot(): Promise<void> {
   });
 
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
-  const scene = new IsoScene(canvas, world, { low: isLowEnd() });
+  const scene = new IsoScene(canvas, world, (a) => sim.act(a), { low: isLowEnd() });
 
   let selected: number | null = null;
   let preview: Preview | null = null;
@@ -54,6 +58,7 @@ async function boot(): Promise<void> {
       draw();
     },
     confirm: () => scene.confirm(),
+    setSpeed: (s) => sim.act({ k: 'speed', speed: s }),
     setOverlay: (on) => scene.setOverlay(on),
     setArt: (on) => scene.setArtMode(on),
     exportSave: () => exportGame(world.toSave()),
@@ -89,6 +94,14 @@ async function boot(): Promise<void> {
   });
   draw();
   scene.start();
+  if (location.search.includes('debug')) {
+    (window as unknown as { __debug: object }).__debug = {
+      advance: (terms = 1) => sim.act({ k: 'debugAdvance', terms }),
+      tile: (x: number, y: number) => scene.tileToScreen(x, y),
+      stats: () => ({ ...world.stats, money: world.linhThach }),
+      mode: sim.mode,
+    };
+  }
   registerSW({ immediate: true });
 }
 

@@ -3,7 +3,10 @@
 Hướng dẫn cho Claude Code khi làm việc trong repo này. GDD đầy đủ: https://claude.ai/artifact/C2RKDi6kdrZM2oGEKfad6W (tóm tắt: `docs/GDD.md`).
 
 ## Nguyên tắc kiến trúc
-- `src/sim/` là logic thuần: **không import Three.js, DOM hay Preact**. Mọi luật chơi nằm ở đây và phải có test (`*.test.ts`, Vitest). Sau này sim chạy trong Web Worker.
+- `src/sim/` là logic thuần: **không import Three.js, DOM hay Preact**. Mọi luật chơi nằm ở đây và phải có test (`*.test.ts`, Vitest).
+- Mô phỏng chạy trong **Web Worker** (`platform/simWorker.ts` → `sim/simCore.ts`). Luồng chính giữ bản sao `World` thụ động (`passive = true`) để vẽ và xem trước; mọi hành động đi qua `sim.act(Action)` (`sim/protocol.ts`): áp ngay lên bản sao rồi gửi sang Worker, ảnh chụp từ Worker thay bản sao bằng `applySave`. Không có Worker thì chạy tại chỗ.
+- Thêm hành động mới = thêm một nhánh vào `Action` + `applyAction`; không gọi thẳng `world.build(...)` từ render/ui.
+- Ngẫu nhiên trong luật chơi chỉ dùng `world.rng` (lưu được), không dùng `Math.random`, để Worker, bản lưu và test cho cùng kết quả.
 - `src/render/` chỉ đọc trạng thái sim để vẽ; không chứa luật chơi.
 - `src/ui/` là HUD Preact; gọi sim qua `World`, không chạm vào Three.js.
 - Đơn vị thời gian là **tiết khí** (`sim/time.ts`), không dùng ngày/giờ thực trong luật chơi.
@@ -26,9 +29,11 @@ Hướng dẫn cho Claude Code khi làm việc trong repo này. GDD đầy đủ
 - Mặt ô địa hình: `render/terrainMaterial.ts` lấy mẫu texture theo tọa độ thế giới (liền mạch giữa các ô), chọn lớp bằng `aLayer`.
 - Sprite (công trình, cây, đá) vẽ theo thứ tự họa sĩ: `depthTest: false`, `renderOrder = 100 + x + w + y + h`.
 - three.js luôn vẽ vật trong suốt SAU vật đục, `renderOrder` không đưa được sprite ra sau mặt ô: muốn nằm sau thì lùi sâu theo hướng nhìn và bật `depthTest` (xem phông núi `makeBackdrop`).
+- Nhà phàm trần (`render/houses.ts`): có `public/sprites/houses/<vùng>.json` thì dùng sprite (hàng = cấp), chưa có thì khối thô.
 - Vật trang trí (`render/terrainArt.ts`) chỉ để nhìn, không phải luật chơi: vị trí, biến thể, lật và co giãn đều suy ra từ ô bằng hàm băm cố định.
 - Biến thể: `public/sprites/decor/<loai>.json` (sinh bởi `tools/art/sheet.py`) — kích thước theo pixel gốc, vật lớn nhất trong sheet = `size` của loại đó.
 
 ## Lệnh
 - `npm run dev` · `npm test` · `npm run typecheck` · `npm run build`
+- Thử nghiệm: mở `?debug` → `window.__debug.advance(n)` tua n tiết khí, `__debug.tile(x, y)` ra tọa độ màn hình, `__debug.stats()`.
 - Chạy `npm test` và `npm run build` trước khi commit.

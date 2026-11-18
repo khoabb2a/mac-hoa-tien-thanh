@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
 
 # ---------- khung sprite sheet 3×3 ----------
-SHEET_GUIDES = [(1, 1, 2.0), (1, 1, 0.6), (2, 2, 1.2)]
+SHEET_GUIDES = [(1, 1, 2.0), (1, 1, 0.6), (2, 2, 1.2), (1, 1, 1.2)]
 
 
 def draw_sheet(w: int, d: int, h: float, n: int = 3) -> str:

@@ -1,27 +1,140 @@
 {
   "_note": "Bảng thuật ngữ chung — nguồn duy nhất cho mọi bản dịch. Agent dịch phải bám theo bảng này. Tên người bản Anh dùng pinyin.",
   "terms": [
-    { "vi": "Linh khí", "han": "靈氣", "en": "Spiritual Qi" },
-    { "vi": "Linh thạch", "han": "靈石", "en": "Spirit Stone" },
-    { "vi": "Linh mạch", "han": "靈脈", "en": "Spirit Vein" },
-    { "vi": "Linh lộ", "han": "靈路", "en": "Spirit Road" },
-    { "vi": "Linh tuyền", "han": "靈泉", "en": "Spirit Spring" },
-    { "vi": "Sát khí", "han": "煞氣", "en": "Baleful Qi" },
-    { "vi": "Tông môn", "han": "宗門", "en": "Sect" },
-    { "vi": "Đệ tử", "han": "弟子", "en": "Disciple" },
-    { "vi": "Linh căn", "han": "靈根", "en": "Spiritual Root" },
-    { "vi": "Luyện Khí", "han": "煉氣", "en": "Qi Condensation" },
-    { "vi": "Trúc Cơ", "han": "築基", "en": "Foundation Establishment" },
-    { "vi": "Kim Đan", "han": "金丹", "en": "Golden Core" },
-    { "vi": "Nguyên Anh", "han": "元嬰", "en": "Nascent Soul" },
-    { "vi": "Hóa Thần", "han": "化神", "en": "Spirit Severing" },
-    { "vi": "Thiên kiếp", "han": "天劫", "en": "Heavenly Tribulation" },
-    { "vi": "Kỳ ngộ", "han": "奇遇", "en": "Fortuitous Encounter" },
-    { "vi": "Tiết khí", "han": "節氣", "en": "Solar Term" },
-    { "vi": "Thiên Nhãn", "han": "天眼", "en": "Heavenly Eye" },
-    { "vi": "Động Phủ", "han": "洞府", "en": "Cave Abode" },
-    { "vi": "Tiên Trấn", "han": "仙鎮", "en": "Immortal Town" },
-    { "vi": "Tiên Thành", "han": "仙城", "en": "Immortal City" },
-    { "vi": "Tiên Quốc", "han": "仙國", "en": "Immortal Realm" }
+    {
+      "vi": "Linh khí",
+      "han": "靈氣",
+      "en": "Spiritual Qi"
+    },
+    {
+      "vi": "Linh thạch",
+      "han": "靈石",
+      "en": "Spirit Stone"
+    },
+    {
+      "vi": "Linh mạch",
+      "han": "靈脈",
+      "en": "Spirit Vein"
+    },
+    {
+      "vi": "Linh lộ",
+      "han": "靈路",
+      "en": "Spirit Road"
+    },
+    {
+      "vi": "Linh tuyền",
+      "han": "靈泉",
+      "en": "Spirit Spring"
+    },
+    {
+      "vi": "Sát khí",
+      "han": "煞氣",
+      "en": "Baleful Qi"
+    },
+    {
+      "vi": "Tông môn",
+      "han": "宗門",
+      "en": "Sect"
+    },
+    {
+      "vi": "Đệ tử",
+      "han": "弟子",
+      "en": "Disciple"
+    },
+    {
+      "vi": "Linh căn",
+      "han": "靈根",
+      "en": "Spiritual Root"
+    },
+    {
+      "vi": "Luyện Khí",
+      "han": "煉氣",
+      "en": "Qi Condensation"
+    },
+    {
+      "vi": "Trúc Cơ",
+      "han": "築基",
+      "en": "Foundation Establishment"
+    },
+    {
+      "vi": "Kim Đan",
+      "han": "金丹",
+      "en": "Golden Core"
+    },
+    {
+      "vi": "Nguyên Anh",
+      "han": "元嬰",
+      "en": "Nascent Soul"
+    },
+    {
+      "vi": "Hóa Thần",
+      "han": "化神",
+      "en": "Spirit Severing"
+    },
+    {
+      "vi": "Thiên kiếp",
+      "han": "天劫",
+      "en": "Heavenly Tribulation"
+    },
+    {
+      "vi": "Kỳ ngộ",
+      "han": "奇遇",
+      "en": "Fortuitous Encounter"
+    },
+    {
+      "vi": "Tiết khí",
+      "han": "節氣",
+      "en": "Solar Term"
+    },
+    {
+      "vi": "Thiên Nhãn",
+      "han": "天眼",
+      "en": "Heavenly Eye"
+    },
+    {
+      "vi": "Động Phủ",
+      "han": "洞府",
+      "en": "Cave Abode"
+    },
+    {
+      "vi": "Tiên Trấn",
+      "han": "仙鎮",
+      "en": "Immortal Town"
+    },
+    {
+      "vi": "Tiên Thành",
+      "han": "仙城",
+      "en": "Immortal City"
+    },
+    {
+      "vi": "Tiên Quốc",
+      "han": "仙國",
+      "en": "Immortal Realm"
+    },
+    {
+      "vi": "Tam Tài Khí",
+      "han": "三才氣",
+      "en": "Three Talents"
+    },
+    {
+      "vi": "Phàm Cư",
+      "han": "凡居",
+      "en": "Homes"
+    },
+    {
+      "vi": "Phường Thị",
+      "han": "坊市",
+      "en": "Market"
+    },
+    {
+      "vi": "Linh Điền",
+      "han": "靈田",
+      "en": "Spirit Fields"
+    },
+    {
+      "vi": "Phong thủy",
+      "han": "風水",
+      "en": "Feng shui"
+    }
   ]
 }

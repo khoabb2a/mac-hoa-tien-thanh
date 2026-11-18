@@ -5,7 +5,7 @@
 **EN** — A SimCity-style xianxia sect builder in ink-wash isometric art. Runs in the browser as a PWA, mobile-first.
 
 - GDD: [Claude Docs — GDD Mặc Họa Tiên Thành](https://claude.ai/artifact/C2RKDi6kdrZM2oGEKfad6W) · tóm tắt trong [`docs/GDD.md`](docs/GDD.md)
-- Trạng thái / Status: **prototype khung** — lưới ô, linh lộ, linh khí lan theo đường, đồng hồ 24 tiết khí, Thiên Nhãn, HUD song ngữ.
+- Trạng thái / Status: **prototype lõi** — xây công trình, linh lộ, quy hoạch phàm trần tự mọc nhà (Tam Tài Khí), phong thủy, Thiên Nhãn, lưu game, mô phỏng trong Web Worker, HUD song ngữ, họa bản AI.
 
 ## Chạy thử / Run
 

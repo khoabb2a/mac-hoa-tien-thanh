@@ -43,8 +43,15 @@ Tam Tài Khí (≈ RCI) · Thiên Nhãn (overlay mực loang) · bong bóng ch�
 - [x] Công cụ xây: bảng Xây, đặt hai bước (bóng mờ ở tâm màn hình, đỏ khi vướng/thiếu tiền), linh lộ chạm 2 điểm (chữ L), phá dỡ hoàn 50%
 - [x] Lưu game IndexedDB (tự lưu) + xuất/nhập JSON + chơi lại
 
+- [x] Biến thể cây/đá: 6 sheet 3×3 (54 biến thể) + lật/co giãn ngẫu nhiên theo ô
+- [x] Vùng phàm trần Cư/Thị/Điền tự mọc nhà 3 cấp theo Tam Tài Khí, linh khí đường và phong thủy; cống phẩm mỗi tiết khí
+- [x] Thanh Tam Tài Khí (3 cột, chạm xem số dân/việc/thu nhập)
+- [x] Phong thủy lớp 1 (tựa núi · nhìn nước · linh mạch): chấm vàng khi cầm công trình/quy hoạch, +10% sản lượng mỗi điểm, nâng cấp tối đa nhà
+- [x] Mô phỏng chạy trong Web Worker, bản sao trên luồng chính; bản lưu v2 (đọc được v1)
+
 ## Việc tiếp theo trong code
-- [ ] Chấm phong thủy (lớp 1) khi cầm công trình
+- [ ] Họa bản nhà phàm trần (prompt sẵn trong tools/art/SHEET_PROMPTS.md, mục nha_cu / nha_thi / nha_dien)
+- [ ] Cân bằng số liệu Tam Tài Khí sau khi chơi thử
 - [x] Họa bản AI cho địa hình: phông núi, vách đá, tùng/trúc/đào, kỳ thạch, lau sậy, texture đất/đường/nước
 - [ ] Chuyển `World` vào Web Worker
 - [ ] Vùng phàm trần tự mọc + Tam Tài Khí

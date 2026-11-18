@@ -131,3 +131,33 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   font-size: 13px; pointer-events: none; text-align: center;
 }
 .toast.bad { background: var(--chu-sa); }
+
+/* ---------- Tam Tài Khí, quy hoạch, phong thủy ---------- */
+.demand { position: absolute; right: 12px; bottom: calc(var(--safe-bottom) + 84px); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.demand-bars {
+  display: flex; gap: 8px; padding: 6px 10px; align-items: flex-end;
+  background: rgba(239, 230, 210, 0.92); border: 1.5px solid var(--ink); border-radius: 12px;
+}
+.demand-bars .bar { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.demand-bars .track { position: relative; width: 12px; height: 54px; border-left: 1px solid rgba(20,18,15,.15); border-right: 1px solid rgba(20,18,15,.15); }
+.demand-bars .track::after { content: ''; position: absolute; left: -3px; right: -3px; top: 27px; border-top: 1.5px solid var(--ink); }
+.demand-bars .fill { position: absolute; left: 1px; right: 1px; border-radius: 2px; transition: height .4s; }
+.demand-bars .fill.up { bottom: 27px; }
+.demand-bars .fill.down { top: 28px; background: var(--chu-sa) !important; opacity: .7; }
+.bar-cu .fill { background: #4F7A66; }
+.bar-thi .fill { background: #B08A35; }
+.bar-dien .fill { background: #3E6C8C; }
+.demand-bars .glyph { font-size: 14px; }
+.demand-pop {
+  max-width: 230px; background: rgba(239, 230, 210, 0.97); border: 1.5px solid var(--ink); border-radius: 10px;
+  padding: 8px 10px; font-size: 13px; line-height: 1.35;
+}
+.demand-pop .note { font-size: 12px; color: var(--ink-soft); margin: 4px 0 0; }
+.card { bottom: calc(var(--safe-bottom) + 172px); }
+.thumb.swatch-cu { background: #D3E2D2; border-radius: 8px; }
+.thumb.swatch-thi { background: #F0DDB2; border-radius: 8px; }
+.thumb.swatch-dien { background: #C9D9E2; border-radius: 8px; }
+.actionbar .fs { font-size: 12px; color: var(--ink-soft); margin-top: 2px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.actionbar .fs span { font-family: 'Noto Serif SC', serif; opacity: .3; }
+.actionbar .fs span.yes { opacity: 1; color: #8A6A1E; font-weight: 700; }
+.actionbar .fs .bonus { opacity: 1; font-family: inherit; color: #8A6A1E; }

@@ -1,7 +1,8 @@
 """Cắt sprite sheet 3×3 do AI vẽ thành 9 biến thể, gom vào một ảnh atlas + file mô tả JSON.
 
 Chạy:  python tools/art/sheet.py art/source/tung_sheet_v1.png tung [--holes] [--grid 3]
-Ra:    public/sprites/decor/<loai>.webp  +  public/sprites/decor/<loai>.json
+       python tools/art/sheet.py art/source/cu_sheet_v1.png cu --houses      # nhà phàm trần: hàng = cấp
+Ra:    public/sprites/decor/<loai>.webp + .json   (hoặc public/sprites/houses/ với --houses)
 
 - Chia ảnh thành lưới đều, tách nền từng ô (dùng chung thuật toán với cutout.py).
 - Giữ tỉ lệ to/nhỏ giữa các biến thể: JSON ghi kích thước pixel gốc; game lấy vật lớn nhất làm chuẩn.
@@ -24,15 +25,32 @@ ATLAS_W = 1024
 MIN_SPECK = 60  # cụm điểm nhỏ hơn thế (vệt bẩn, chấm lạc) thì bỏ
 
 
-def split(src: str, kind: str, grid: int = 3, holes: bool = False) -> str:
+def cuts(profile: np.ndarray, n: int) -> list[int]:
+    """Tìm n-1 đường cắt ở khe trống nhất quanh các vị trí chia đều (±22%), để vật lệch ô vẫn tách đúng."""
+    L = len(profile)
+    out = [0]
+    for k in range(1, n):
+        center = k * L // n
+        lo, hi = max(int(center - 0.22 * L / n), out[-1] + 1), min(int(center + 0.22 * L / n), L - 1)
+        window = profile[lo:hi]
+        best = np.flatnonzero(window == window.min())
+        out.append(lo + int(best[np.argmin(np.abs(best + lo - center))]))
+    out.append(L)
+    return out
+
+
+def split(src: str, kind: str, grid: int = 3, holes: bool = False, folder: str = "decor") -> str:
     rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
     H, W = rgb.shape[:2]
+    full = alpha_cutout(rgb, holes)[..., 3] > 5
     variants = []
     warnings = []
+    rows = cuts(full.sum(axis=1), grid)
     for r in range(grid):
+        y0, y1 = rows[r], rows[r + 1]
+        cols = cuts(full[y0:y1].sum(axis=0), grid)
         for c in range(grid):
-            y0, y1 = r * H // grid, (r + 1) * H // grid
-            x0, x1 = c * W // grid, (c + 1) * W // grid
+            x0, x1 = cols[c], cols[c + 1]
             cell = alpha_cutout(rgb[y0:y1, x0:x1], holes)
             a = cell[..., 3] > 5
             # bỏ chấm lạc, giữ các cụm đủ lớn (lá rơi, cánh hoa vẫn giữ nếu ≥ MIN_SPECK)
@@ -45,7 +63,13 @@ def split(src: str, kind: str, grid: int = 3, holes: bool = False) -> str:
             if not a.any():
                 warnings.append(f"ô {r * grid + c + 1}: trống")
                 continue
-            edge = np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]]).mean()
+            # chỉ xét mép nằm giữa hai ô (mép ngoài ảnh không tính)
+            inner = []
+            if r > 0: inner.append(a[0])
+            if r < grid - 1: inner.append(a[-1])
+            if c > 0: inner.append(a[:, 0])
+            if c < grid - 1: inner.append(a[:, -1])
+            edge = np.concatenate(inner).mean() if inner else 0.0
             if edge > 0.004:
                 warnings.append(f"ô {r * grid + c + 1}: vật chạm mép ô ({edge:.1%}) — có thể bị cắt")
             ys, xs = np.nonzero(a)
@@ -55,12 +79,11 @@ def split(src: str, kind: str, grid: int = 3, holes: bool = False) -> str:
             band = a[by1 - max(int(h * 0.08), 2) : by1, bx0:bx1]
             bxs = np.nonzero(band)[1]
             ax = float(bxs.mean() / w) if bxs.size else 0.5
-            variants.append({"img": Image.fromarray(crop, "RGBA"), "ax": round(ax, 4), "ay": 0.03, "wPx": int(w), "hPx": int(h)})
+            variants.append({"cell": r * grid + c, "img": Image.fromarray(crop, "RGBA"), "ax": round(ax, 4), "ay": 0.03, "wPx": int(w), "hPx": int(h)})
 
-    # xếp kệ (shelf packing) vào atlas rộng ATLAS_W
-    variants.sort(key=lambda v: -v["hPx"])
+    # xếp kệ (shelf packing) vào atlas rộng ATLAS_W; JSON vẫn giữ thứ tự ô (hàng = cấp với sheet nhà)
     x = y = shelf = 0
-    for v in variants:
+    for v in sorted(variants, key=lambda v: -v["hPx"]):
         w, h = v["wPx"], v["hPx"]
         if x + w + PAD > ATLAS_W:
             x, y, shelf = 0, y + shelf + PAD, 0
@@ -73,16 +96,16 @@ def split(src: str, kind: str, grid: int = 3, holes: bool = False) -> str:
         atlas.paste(v["img"], (v["x"], v["y"]))
 
     root = os.path.join(os.path.dirname(__file__), "..", "..")
-    out_dir = os.path.normpath(os.path.join(root, "public", "sprites", "decor"))
+    out_dir = os.path.normpath(os.path.join(root, "public", "sprites", folder))
     os.makedirs(out_dir, exist_ok=True)
     atlas.save(os.path.join(out_dir, f"{kind}.webp"), "WEBP", quality=88, method=6)
     manifest = {
-        "image": f"sprites/decor/{kind}.webp",
+        "image": f"sprites/{folder}/{kind}.webp",
         "width": ATLAS_W,
         "height": atlas_h,
         "maxHPx": max(v["hPx"] for v in variants),
         "maxWPx": max(v["wPx"] for v in variants),
-        "variants": [{k: v[k] for k in ("x", "y", "wPx", "hPx", "ax", "ay")} for v in variants],
+        "variants": [{k: v[k] for k in ("cell", "x", "y", "wPx", "hPx", "ax", "ay")} for v in variants],
     }
     with open(os.path.join(out_dir, f"{kind}.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=1)
@@ -93,4 +116,5 @@ def split(src: str, kind: str, grid: int = 3, holes: bool = False) -> str:
 
 if __name__ == "__main__":
     g = int(sys.argv[sys.argv.index("--grid") + 1]) if "--grid" in sys.argv else 3
-    print(split(sys.argv[1], sys.argv[2], grid=g, holes="--holes" in sys.argv))
+    folder = "houses" if "--houses" in sys.argv else "decor"
+    print(split(sys.argv[1], sys.argv[2], grid=g, holes="--holes" in sys.argv, folder=folder))

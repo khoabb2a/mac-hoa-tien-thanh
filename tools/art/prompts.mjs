@@ -138,3 +138,36 @@ Output a square 1:1 image.
 }
 fs.writeFileSync(path.join(DIR, 'SHEET_PROMPTS.md'), smd);
 console.log('Đã ghi tools/art/SHEET_PROMPTS.md');
+
+// ---------- nhà phàm trần (sheet 3×3, hàng = cấp): thêm vào SHEET_PROMPTS.md ----------
+const houses = JSON.parse(fs.readFileSync(path.join(DIR, 'houses.json'), 'utf8'));
+const houseStyle = sheetStyle
+  .replace(/Size variety:[^\n]*\n/, 'Size by ROW, not by column: row 1 = level 1 (smallest), row 2 = level 2, row 3 = level 3 (largest), exactly as described below. Within each row the three buildings are similar in size but different in design.\n')
+  .replace('the same kind of object', 'the same kind of building, in three upgrade levels');
+let hmd = `\n# Nhà phàm trần — sheet 3×3 (hàng = cấp nhà)
+
+Ba sheet cho ba vùng Tam Tài Khí. Khác sheet cây đá: **hàng trên là nhà cấp 1 (nhỏ nhất), hàng dưới là cấp 3 (lớn nhất)**.
+Đính kèm \`art/blockout/sheet_guide_1x1_h12.png\`. Cắt bằng \`python tools/art/sheet.py art/source/cu_sheet_v1.png cu --houses\`.
+
+`;
+for (const [key, h] of Object.entries(houses)) {
+  hmd += `## nha_${key} — ${h.use}
+
+Đính kèm: \`art/blockout/sheet_guide_1x1_h12.png\` (Image 1) · Tỉ lệ 1:1
+
+\`\`\`text
+${houseStyle}
+
+## Subject
+${h.subject}
+
+${h.rows.join('\n')}
+
+Image 1 is the LAYOUT GUIDE only — do not draw it.
+Output a square 1:1 image.
+\`\`\`
+
+`;
+}
+fs.appendFileSync(path.join(DIR, 'SHEET_PROMPTS.md'), hmd);
+console.log('Đã thêm prompt nhà phàm trần vào SHEET_PROMPTS.md');

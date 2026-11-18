@@ -25,6 +25,9 @@ export interface GridSave {
   vein: number[];
   buildings: Building[];
   nextId: number;
+  /** Từ bản lưu v2: vùng phàm trần và cấp nhà từng ô. */
+  zone?: number[];
+  level?: number[];
 }
 
 export const BUILDING_SIZE: Record<BuildingType, [number, number]> = {
@@ -44,6 +47,10 @@ export class Grid {
   readonly vein: Uint8Array;
   /** Chỉ số công trình chiếm ô, -1 nếu trống. */
   readonly occupant: Int32Array;
+  /** Vùng phàm trần: 0 không, 1 Cư, 2 Thị, 3 Điền (xem zones.ts). */
+  readonly zone: Uint8Array;
+  /** Cấp nhà trên ô có vùng: 0 trống, 1 Thảo Xá, 2 Trạch Viện, 3 Lâu Các. */
+  readonly level: Uint8Array;
   readonly buildings: Building[] = [];
   private nextId = 0;
 
@@ -55,6 +62,8 @@ export class Grid {
     this.road = new Uint8Array(n);
     this.vein = new Uint8Array(n);
     this.occupant = new Int32Array(n).fill(-1);
+    this.zone = new Uint8Array(n);
+    this.level = new Uint8Array(n);
   }
 
   idx(x: number, y: number): number {
@@ -68,7 +77,7 @@ export class Grid {
   isFree(x: number, y: number): boolean {
     if (!this.inBounds(x, y)) return false;
     const i = this.idx(x, y);
-    return this.terrain[i] === Terrain.Grass && this.road[i] === 0 && this.occupant[i] === -1;
+    return this.terrain[i] === Terrain.Grass && this.road[i] === 0 && this.occupant[i] === -1 && this.zone[i] === 0;
   }
 
   canPlace(type: BuildingType, x: number, y: number): boolean {
@@ -91,6 +100,8 @@ export class Grid {
     const i = this.idx(x, y);
     if (this.terrain[i] === Terrain.Rock || this.occupant[i] !== -1) return false;
     this.road[i] = 1; // linh lộ đi qua nước = cầu
+    this.zone[i] = 0; // làm đường xuyên vùng thì xóa vùng và nhà trên ô đó
+    this.level[i] = 0;
     return true;
   }
 
@@ -131,20 +142,34 @@ export class Grid {
       vein: Array.from(this.vein),
       buildings: this.buildings.map((b) => ({ ...b })),
       nextId: this.nextId,
+      zone: Array.from(this.zone),
+      level: Array.from(this.level),
     };
   }
 
   static fromJSON(s: GridSave): Grid {
     const g = new Grid(s.width, s.height);
-    g.terrain.set(s.terrain);
-    g.road.set(s.road);
-    g.vein.set(s.vein);
-    for (const b of s.buildings) {
-      g.buildings.push({ ...b });
-      for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) g.occupant[g.idx(b.x + dx, b.y + dy)] = b.id;
-    }
-    g.nextId = s.nextId;
+    g.loadFrom(s);
     return g;
+  }
+
+  /** Nạp bản lưu vào lưới có sẵn (cùng kích thước) — giữ nguyên tham chiếu mảng cho phần vẽ. */
+  loadFrom(s: GridSave): void {
+    if (s.width !== this.width || s.height !== this.height) throw new Error('grid size mismatch');
+    this.terrain.set(s.terrain);
+    this.road.set(s.road);
+    this.vein.set(s.vein);
+    this.zone.fill(0);
+    this.level.fill(0);
+    if (s.zone) this.zone.set(s.zone);
+    if (s.level) this.level.set(s.level);
+    this.occupant.fill(-1);
+    this.buildings.length = 0;
+    for (const b of s.buildings) {
+      this.buildings.push({ ...b });
+      for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) this.occupant[this.idx(b.x + dx, b.y + dy)] = b.id;
+    }
+    this.nextId = s.nextId;
   }
 
   /** Các ô kề cạnh (4 hướng) quanh chu vi một công trình. */

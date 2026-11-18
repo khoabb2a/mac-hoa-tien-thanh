@@ -1,9 +1,13 @@
 import * as THREE from 'three';
+import { fengShuiAt, fengShuiMap, type FengShui } from '../sim/fengShui';
 import { BUILDING_SIZE, Terrain, type Building, type BuildingType } from '../sim/grid';
 import { POWERED_THRESHOLD } from '../sim/linhKhi';
 import { lPath } from '../sim/path';
-import type { ActionFail, World } from '../sim/world';
+import type { Action } from '../sim/protocol';
+import type { ActionFail, ActionResult, World } from '../sim/world';
+import type { ZoneType } from '../sim/zones';
 import { buildBlockout } from './blockout/buildings';
+import { HouseLayer, loadHouseSheets } from './houses';
 import { PALETTE } from './palette';
 import { fitSpriteToBlockout, loadSpriteTexture, SPRITE_URL } from './sprites';
 import { decorFor, loadDecorSheets, makeBackdrop, makeDecorSprite } from './terrainArt';
@@ -14,7 +18,7 @@ const AZIMUTH = Math.PI / 4;
 const ELEVATION = Math.PI / 6;
 const MIN_VIEW = 6;
 const MAX_VIEW = 30;
-const MAX_MARKS = 128;
+const MAX_MARKS = 600; // vùng quy hoạch lớn cần nhiều ô đánh dấu
 
 export interface SceneOptions {
   /** Mức đồ họa "Giản" cho máy yếu (iPhone SE 2020): giảm độ phân giải, tắt hiệu ứng phụ. */
@@ -26,6 +30,7 @@ export type Tool =
   | { kind: 'none' }
   | { kind: 'build'; type: BuildingType }
   | { kind: 'road' }
+  | { kind: 'zone'; type: ZoneType }
   | { kind: 'demolish' };
 
 /** Thông tin xem trước gửi lên HUD để hiện thanh Xác nhận/Hủy. */
@@ -37,12 +42,16 @@ export interface Preview {
   reason?: ActionFail;
   /** Dương = tốn, âm = được hoàn. */
   cost: number;
-  /** Với đường: đã chọn điểm đầu chưa. */
+  /** Với đường/quy hoạch: đã chọn điểm đầu (góc đầu) chưa. */
   hasStart?: boolean;
+  /** Với xây công trình: phong thủy chỗ đang đặt. */
+  fengShui?: FengShui;
+  /** Với quy hoạch: số ô sẽ tô. */
+  tiles?: number;
 }
 
 export type ActionOutcome =
-  | { ok: true; kind: Tool['kind']; type?: BuildingType; cost: number }
+  | { ok: true; kind: Tool['kind']; type?: BuildingType; zone?: ZoneType; tiles?: number; cost: number }
   | { ok: false; kind: Tool['kind']; reason: ActionFail };
 
 export class IsoScene {
@@ -57,6 +66,10 @@ export class IsoScene {
   private layer!: THREE.InstancedBufferAttribute;
   private terrainMat!: THREE.ShaderMaterial;
   private decor: THREE.Sprite[] = [];
+  private decorKey = '';
+  private houses: HouseLayer;
+  private fsDots!: THREE.InstancedMesh;
+  private fsMap: Uint8Array = new Uint8Array(0);
   private buildingGroups = new Map<number, THREE.Group>();
   private bubbles = new Map<number, THREE.Sprite>();
   private spinners = new Map<number, THREE.Object3D[]>();
@@ -77,12 +90,18 @@ export class IsoScene {
   private roadStart: [number, number] | null = null;
   private roadEnd: [number, number] | null = null;
   private demolishTile: [number, number] | null = null;
+  private zoneA: [number, number] | null = null;
+  private zoneB: [number, number] | null = null;
+  /** Mọi hành động đi qua đây: chạy tại chỗ hoặc gửi sang Web Worker (platform/simClient.ts). */
+  private act: (a: Action) => ActionResult;
 
   private onSelect: (id: number | null) => void = () => {};
   private onPreview: (p: Preview | null) => void = () => {};
 
-  constructor(canvas: HTMLCanvasElement, world: World, opts: SceneOptions) {
+  constructor(canvas: HTMLCanvasElement, world: World, act: (a: Action) => ActionResult, opts: SceneOptions) {
     this.world = world;
+    this.act = act;
+    this.houses = new HouseLayer(this.scene);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !opts.low, alpha: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, opts.low ? 1.5 : 2));
     this.renderer.setClearColor(0x000000, 0); // nền giấy do CSS vẽ
@@ -98,10 +117,16 @@ export class IsoScene {
     this.buildTerrain();
     this.scene.add(makeBackdrop(world.grid, viewDirection()));
     this.buildMarks();
+    this.buildFengShuiDots();
     this.sync();
 
     world.subscribe(() => this.sync());
-    void loadDecorSheets().then((any) => any && this.rebuildDecor());
+    void loadDecorSheets().then((any) => any && this.rebuildDecor(true));
+    void loadHouseSheets().then((any) => {
+      if (!any) return;
+      this.houses.reset();
+      this.houses.update(this.world.grid);
+    });
     this.bindInput(canvas);
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -129,6 +154,12 @@ export class IsoScene {
     this.paintTiles();
   }
 
+  /** Tọa độ màn hình (px CSS) của tâm một ô — dùng cho thử nghiệm tự động (?debug). */
+  tileToScreen(x: number, y: number): [number, number] {
+    const v = new THREE.Vector3(x + 0.5, 0, y + 0.5).project(this.camera);
+    return [((v.x + 1) / 2) * window.innerWidth, ((1 - v.y) / 2) * window.innerHeight];
+  }
+
   start(): void {
     this.renderer.setAnimationLoop(() => this.frame());
   }
@@ -137,8 +168,9 @@ export class IsoScene {
 
   setTool(tool: Tool): void {
     this.tool = tool;
-    this.roadStart = this.roadEnd = this.demolishTile = null;
+    this.roadStart = this.roadEnd = this.demolishTile = this.zoneA = this.zoneB = null;
     this.setGhost(tool.kind === 'build' ? tool.type : null);
+    this.fsDots.visible = tool.kind === 'build' || tool.kind === 'zone';
     this.updateToolPreview();
   }
 
@@ -147,21 +179,31 @@ export class IsoScene {
     const t = this.tool;
     if (t.kind === 'build') {
       const [x, y] = this.buildAt;
-      const r = this.world.build(t.type, x, y);
+      const r = this.act({ k: 'build', type: t.type, x, y });
       this.updateToolPreview();
       return r.ok ? { ok: true, kind: 'build', type: t.type, cost: r.cost } : { ok: false, kind: 'build', reason: r.reason };
     }
     if (t.kind === 'road' && this.roadStart && this.roadEnd) {
-      const r = this.world.buildRoad(this.roadPath());
+      const r = this.act({ k: 'road', path: this.roadPath() });
       if (r.ok) this.roadStart = this.roadEnd = null;
       this.updateToolPreview();
       return r.ok ? { ok: true, kind: 'road', cost: r.cost } : { ok: false, kind: 'road', reason: r.reason };
     }
     if (t.kind === 'demolish' && this.demolishTile) {
-      const r = this.world.demolishAt(...this.demolishTile);
+      const [dx, dy] = this.demolishTile;
+      const r = this.act({ k: 'demolish', x: dx, y: dy });
       this.demolishTile = null;
       this.updateToolPreview();
       return r.ok ? { ok: true, kind: 'demolish', cost: r.cost } : { ok: false, kind: 'demolish', reason: r.reason };
+    }
+    if (t.kind === 'zone' && this.zoneA && this.zoneB) {
+      const [ax, ay] = this.zoneA;
+      const [bx, by] = this.zoneB;
+      const tiles = this.world.zoneTiles(t.type, ax, ay, bx, by).length;
+      const r = this.act({ k: 'zone', type: t.type, ax, ay, bx, by });
+      if (r.ok) this.zoneA = this.zoneB = null;
+      this.updateToolPreview();
+      return r.ok ? { ok: true, kind: 'zone', zone: t.type, tiles, cost: r.cost } : { ok: false, kind: 'zone', reason: r.reason };
     }
     return null;
   }
@@ -211,7 +253,8 @@ export class IsoScene {
       const r = this.world.previewBuild(t.type, x, y);
       good = r.ok;
       for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) marks.push([x + dx, y + dy]);
-      preview = { tool: 'build', ready: true, ok: r.ok, reason: r.ok ? undefined : r.reason, cost: r.cost };
+      const fengShui = fengShuiAt(g, x, y, fw, fh);
+      preview = { tool: 'build', ready: true, ok: r.ok, reason: r.ok ? undefined : r.reason, cost: r.cost, fengShui };
       this.placeGhost(t.type, x, y, r.ok);
     } else if (t.kind === 'road') {
       if (this.roadStart) {
@@ -222,6 +265,17 @@ export class IsoScene {
         preview = { tool: 'road', ready: !!this.roadEnd, ok: r.ok, reason: r.ok ? undefined : r.reason, cost: r.cost, hasStart: true };
       } else {
         preview = { tool: 'road', ready: false, ok: true, cost: 0, hasStart: false };
+      }
+    } else if (t.kind === 'zone') {
+      if (this.zoneA) {
+        const [ax, ay] = this.zoneA;
+        const [bx, by] = this.zoneB ?? this.zoneA;
+        marks.push(...this.world.zoneTiles(t.type, ax, ay, bx, by));
+        const r = this.world.previewZone(t.type, ax, ay, bx, by);
+        good = r.ok || !this.zoneB;
+        preview = { tool: 'zone', ready: !!this.zoneB, ok: r.ok, reason: r.ok ? undefined : r.reason, cost: r.cost, hasStart: true, tiles: r.tiles };
+      } else {
+        preview = { tool: 'zone', ready: false, ok: true, cost: 0, hasStart: false };
       }
     } else if (t.kind === 'demolish') {
       if (this.demolishTile) {
@@ -236,7 +290,8 @@ export class IsoScene {
       }
     }
 
-    this.showMarks(marks, t.kind === 'demolish' ? 'demolish' : good ? 'good' : 'bad');
+    const kind = t.kind === 'demolish' ? 'demolish' : !good ? 'bad' : t.kind === 'zone' ? t.type : 'good';
+    this.showMarks(marks, kind);
     this.onPreview(t.kind === 'none' ? null : preview);
   }
 
@@ -263,6 +318,8 @@ export class IsoScene {
       for (const b of this.world.grid.buildings) if (!this.buildingGroups.has(b.id)) this.addBuilding(b);
       this.layoutTiles();
       this.rebuildDecor();
+      this.houses.update(this.world.grid);
+      this.updateFengShuiDots();
       if (this.tool.kind !== 'none') this.updateToolPreview();
     }
     this.paintTiles();
@@ -289,8 +346,17 @@ export class IsoScene {
     this.scene.add(this.tiles);
   }
 
-  /** Dựng lại cây, đá, vách theo lưới hiện tại (ô vừa làm đường/xây thì vật trang trí biến mất). */
-  private rebuildDecor(): void {
+  /**
+   * Dựng lại cây, đá, vách theo lưới (ô vừa làm đường/xây/quy hoạch thì vật trang trí biến mất).
+   * Chỉ dựng lại khi đường, công trình hoặc vùng đổi — không phải mỗi lần nhà mọc.
+   */
+  private rebuildDecor(force = false): void {
+    const g = this.world.grid;
+    let h = 0;
+    for (let i = 0; i < g.road.length; i++) h = (Math.imul(h, 31) + g.road[i] * 7 + (g.occupant[i] >= 0 ? 3 : 0) + (g.zone[i] ? 1 : 0)) | 0;
+    const key = String(h);
+    if (!force && key === this.decorKey) return;
+    this.decorKey = key;
     for (const s of this.decor) {
       this.scene.remove(s);
       if (s.material.map?.userData.sheetClone) s.material.map.dispose(); // chỉ bản cắt riêng; ảnh gốc dùng chung vẫn trong cache
@@ -343,6 +409,11 @@ export class IsoScene {
         c.copy(rock);
       } else if (this.overlay && g.vein[i]) {
         c.copy(vein);
+      } else if (g.zone[i]) {
+        // vùng phàm trần: loang một sắc nhạt theo loại vùng (ô chưa có nhà đậm hơn để dễ thấy)
+        c.copy(ZONE_TINT[g.zone[i]]);
+        if (g.level[i] > 0) c.lerp(white, 0.5);
+        if (this.overlay) c.lerp(dim, 0.5);
       } else {
         c.copy(white).multiplyScalar(0.97 + 0.03 * (((i * 37) % 11) / 10));
         if (this.overlay) c.lerp(dim, 0.7);
@@ -364,8 +435,12 @@ export class IsoScene {
     this.scene.add(this.marks);
   }
 
-  private showMarks(tiles: Array<[number, number]>, kind: 'good' | 'bad' | 'demolish'): void {
-    const color = new THREE.Color(kind === 'good' ? PALETTE.dangHoang : kind === 'bad' ? PALETTE.chuSa : PALETTE.inkTrong);
+  private showMarks(tiles: Array<[number, number]>, kind: 'good' | 'bad' | 'demolish' | ZoneType): void {
+    const color =
+      kind === 'good' ? new THREE.Color(PALETTE.dangHoang)
+      : kind === 'bad' ? new THREE.Color(PALETTE.chuSa)
+      : kind === 'demolish' ? new THREE.Color(PALETTE.inkTrong)
+      : new THREE.Color(ZONE_MARK[kind]);
     const m = new THREE.Matrix4();
     const n = Math.min(tiles.length, MAX_MARKS);
     for (let k = 0; k < n; k++) {
@@ -377,6 +452,41 @@ export class IsoScene {
     this.marks.count = n;
     this.marks.instanceMatrix.needsUpdate = true;
     if (this.marks.instanceColor) this.marks.instanceColor.needsUpdate = true;
+  }
+
+  /** Chấm phong thủy (GDD 5.4): hiện khi cầm công trình hoặc quy hoạch; chấm càng to, càng vàng = càng cát. */
+  private buildFengShuiDots(): void {
+    const g = this.world.grid;
+    const geo = new THREE.CircleGeometry(1, 12).rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85, depthWrite: false });
+    this.fsDots = new THREE.InstancedMesh(geo, mat, g.width * g.height);
+    this.fsDots.count = 0;
+    this.fsDots.renderOrder = 60;
+    this.fsDots.frustumCulled = false;
+    this.fsDots.visible = false;
+    this.scene.add(this.fsDots);
+  }
+
+  private updateFengShuiDots(): void {
+    const g = this.world.grid;
+    this.fsMap = fengShuiMap(g);
+    const m = new THREE.Matrix4();
+    const colors = [new THREE.Color('#B9B2A4'), new THREE.Color('#D2B97A'), new THREE.Color(PALETTE.dangHoang), new THREE.Color('#A8761C')];
+    let n = 0;
+    for (let y = 0; y < g.height; y++)
+      for (let x = 0; x < g.width; x++) {
+        const i = g.idx(x, y);
+        const score = this.fsMap[i];
+        if (!g.isFree(x, y)) continue;
+        const r = [0.06, 0.13, 0.19, 0.26][score]; // điểm 0: chấm xám nhỏ để vẫn thấy lưới chỗ trống
+        m.makeScale(r, 1, r).setPosition(x + 0.5, 0.06, y + 0.5);
+        this.fsDots.setMatrixAt(n, m);
+        this.fsDots.setColorAt(n, colors[score]);
+        n++;
+      }
+    this.fsDots.count = n;
+    this.fsDots.instanceMatrix.needsUpdate = true;
+    if (this.fsDots.instanceColor) this.fsDots.instanceColor.needsUpdate = true;
   }
 
   private addBuilding(b: Building): void {
@@ -518,7 +628,7 @@ export class IsoScene {
     const ndcX = (px / window.innerWidth) * 2 - 1;
     const ndcY = -(py / window.innerHeight) * 2 + 1;
     const t = this.tool;
-    if (t.kind === 'road' || t.kind === 'demolish') {
+    if (t.kind === 'road' || t.kind === 'demolish' || t.kind === 'zone') {
       const p = this.groundAt(ndcX, ndcY);
       const tile: [number, number] = [Math.floor(p.x), Math.floor(p.z)];
       if (!this.world.grid.inBounds(...tile)) return;
@@ -527,6 +637,11 @@ export class IsoScene {
           this.roadStart = tile;
           this.roadEnd = null;
         } else this.roadEnd = tile;
+      } else if (t.kind === 'zone') {
+        if (!this.zoneA || this.zoneB) {
+          this.zoneA = tile;
+          this.zoneB = null;
+        } else this.zoneB = tile;
       } else this.demolishTile = tile;
       this.updateToolPreview();
       return;
@@ -557,6 +672,14 @@ export class IsoScene {
     this.renderer.render(this.scene, this.camera);
   }
 }
+
+/** Sắc loang mặt ô theo vùng: Cư thanh lục, Thị đằng hoàng, Điền thạch thanh (đều rất nhạt). */
+const ZONE_TINT: Record<number, THREE.Color> = {
+  1: new THREE.Color('#D3E2D2'),
+  2: new THREE.Color('#F0DDB2'),
+  3: new THREE.Color('#C9D9E2'),
+};
+const ZONE_MARK: Record<ZoneType, string> = { cu: PALETTE.thanhLuc, thi: PALETTE.dangHoang, dien: PALETTE.thachThanh };
 
 /** Hướng từ tâm nhìn tới camera (vector đơn vị). */
 function viewDirection(): THREE.Vector3 {
