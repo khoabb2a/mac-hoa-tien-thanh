@@ -58,5 +58,6 @@ Toàn bộ hình ảnh do AI vẽ (GDD mục 3.4). Bước hiện có:
    ```
    Ảnh ra ở `art/generated/<loại>/`, mở `art/generated/index.html` để so với khối thô.
 3. Phong cách sửa ở `tools/art/style-prompt.md`; mô tả từng công trình ở `tools/art/subjects.json`.
+4. **Không có khóa API?** Dùng prompt dán tay trong [`tools/art/PROMPTS.md`](tools/art/PROMPTS.md) với Gemini app hoặc AI Studio.
 
 Loại có sẵn: `chinhDien`, `tinhXa`, `tuLinhTran`, `duocVien`.

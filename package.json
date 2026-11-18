@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "art:gen": "node tools/art/gen.mjs",
-    "art:render": "python tools/art/render_blockouts.py"
+    "art:render": "python tools/art/render_blockouts.py",
+    "art:prompts": "node tools/art/prompts.mjs"
   },
   "repository": {
     "type": "git",
