@@ -1,0 +1,69 @@
+{
+  "nui_xa": {
+    "kind": "backdrop",
+    "priority": 1,
+    "aspect": "21:9",
+    "use": "Phông núi xa sau bản đồ (thay các khối nón xa)",
+    "subject": "A wide panorama of distant immortal mountains in the style of the Song-dynasty blue-green landscape 'A Thousand Li of Rivers and Mountains': three or four layered ranges of steep, tall peaks, nearest range darkest ink with jade-green and stone-blue washes on the slopes, farther ranges paler and paler until they are only faint grey silhouettes. A few tiny pavilions and a thin waterfall on the peaks, bands of white mist drifting between the ranges. Composition: peaks occupy the upper 70% of the image; the lowest 30% dissolves completely into pure white mist so it blends into the map below."
+  },
+  "vach_da": {
+    "kind": "object",
+    "priority": 1,
+    "guide": "guide_2x2_h12.png",
+    "use": "Vách đá trên ô Đá (rìa sau bản đồ), 2×2 ô",
+    "subject": "A rugged rocky outcrop / small cliff for the edge of a mountain sect: several stacked angular boulders with cracked faces, dry-brush texture strokes (cun fa) on the rock, a twisted small pine clinging to one side, some moss in muted jade green at the base. Its footprint fills the 2×2 diamond and it rises to about the height of the dashed box."
+  },
+  "tung": {
+    "kind": "object",
+    "priority": 1,
+    "guide": "guide_1x1_h20.png",
+    "use": "Cây tùng trang trí trên ô cỏ trống, 1×1 ô",
+    "subject": "A single ancient pine tree (cổ tùng): gnarled, twisting trunk with flaking bark drawn in dry brush, layered flat clusters of needles in dark ink with muted jade-green wash, slightly leaning, elegant scholar-painting silhouette. Trunk base sits in the center of the diamond; the crown reaches about the top of the dashed box."
+  },
+  "duong_da": {
+    "kind": "texture",
+    "priority": 1,
+    "use": "Mặt ô Linh lộ (đường)",
+    "subject": "Old flagstone path: irregular rectangular paving stones in light-to-mid grey ink wash with thin dark ink joints, a little moss in the joints, worn edges. Fill the whole square edge to edge."
+  },
+  "mat_nuoc": {
+    "kind": "texture",
+    "priority": 1,
+    "use": "Mặt ô Nước (suối)",
+    "subject": "Calm stream water as an ink painter would draw it: pale grey-blue (#B7C3BE) wash with rhythmic thin ink ripple lines (curved wave strokes in the Song painting manner), mostly empty paper-like surface between the lines. Fill the whole square edge to edge."
+  },
+  "dat_co": {
+    "kind": "texture",
+    "priority": 1,
+    "use": "Mặt ô đất trống (nền)",
+    "subject": "Bare ground of a mountain meadow, very subtle: warm paper beige (#EFE6D2) with faint uneven ink washes and a few tiny grass strokes and dots in muted green and grey. Low contrast — it must stay quiet behind buildings. Fill the whole square edge to edge."
+  },
+  "truc": {
+    "kind": "object",
+    "priority": 2,
+    "guide": "guide_1x1_h20.png",
+    "use": "Cụm trúc trang trí, 1×1 ô",
+    "subject": "A small clump of five or six bamboo stalks with jointed stems in ink and slender leaves drawn as quick 'ge' character strokes, leaves in dark ink with muted jade-green wash, gently leaning as if in a breeze. Rooted in the center of the diamond, reaching about the top of the dashed box."
+  },
+  "dao": {
+    "kind": "object",
+    "priority": 2,
+    "guide": "guide_1x1_h20.png",
+    "use": "Cây đào hoa trang trí (xuân), 1×1 ô",
+    "subject": "A small peach blossom tree: dark angular ink branches, clusters of pale pink blossoms dotted in light wash (the only pink in the image, kept soft and muted), a few petals falling. Rooted in the center of the diamond, crown reaching about the top of the dashed box."
+  },
+  "ky_thach": {
+    "kind": "object",
+    "priority": 2,
+    "guide": "guide_1x1_h06.png",
+    "use": "Đá cảnh (kỳ thạch), 1×1 ô",
+    "subject": "A single scholar's rock (Taihu stone): pale grey porous limestone with holes and hollows, outlined in confident ink with dry-brush texture, a tuft of grass at its foot. It sits on the diamond and stays within the low dashed box."
+  },
+  "lau_say": {
+    "kind": "object",
+    "priority": 2,
+    "guide": "guide_1x1_h06.png",
+    "use": "Cụm lau sậy ven nước, 1×1 ô",
+    "subject": "A clump of reeds and tall grass at a stream bank: slender blades in quick ink strokes, a few feathery seed heads, muted jade green and ochre washes. Rooted on the diamond, within the low dashed box."
+  }
+}

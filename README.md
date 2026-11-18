@@ -65,3 +65,5 @@ Toàn bộ hình ảnh do AI vẽ (GDD mục 3.4). Bước hiện có:
    Game tự đặt sprite khớp ô đất; nút **Họa bản / Khối thô** để so.
 
 Loại có sẵn: `chinhDien`, `tinhXa`, `tuLinhTran`, `duocVien`.
+
+**Địa hình** (núi, cây, đá, texture ô): prompt trong [`tools/art/TERRAIN_PROMPTS.md`](tools/art/TERRAIN_PROMPTS.md), danh sách ở `tools/art/terrain.json`. Vật thể dùng ảnh khung `art/blockout/guide_*.png` (sinh bằng `python tools/art/guides.py`).

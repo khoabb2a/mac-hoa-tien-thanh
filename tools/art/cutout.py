@@ -1,7 +1,9 @@
 """Tách nền trắng ảnh AI vẽ → sprite trong suốt cho game.
 
-Chạy:  python tools/art/cutout.py art/source/chinhDien_v1.png chinhDien
-Ra:    public/sprites/<loai>.webp  (cạnh dài tối đa 768 px — đủ nét trên iPhone SE, nhẹ cho bộ nhớ)
+Chạy:  python tools/art/cutout.py art/source/chinhDien_v1.png chinhDien            # vật thể: tách nền, ≤768 px
+       python tools/art/cutout.py art/source/mat_nuoc_v1.png mat_nuoc --texture   # texture ô: giữ nguyên, 256×256
+       python tools/art/cutout.py art/source/nui_xa_v1.png nui_xa --backdrop      # phông núi: tách nền, ≤1536 px
+Ra:    public/sprites/<ten>.webp
 
 Cách làm: điểm gần-trắng nối liền với mép ảnh là nền (giữ lại vùng trắng bên trong công trình);
 viền 3 px quanh nền được làm mềm theo độ đậm của mực và khử quầng trắng.
@@ -17,7 +19,21 @@ MAX_SIDE = 768
 PAD = 6
 
 
-def cutout(src: str, name: str) -> str:
+def texture(src: str, name: str, size: int = 256) -> str:
+    """Texture ô liền mạch: không tách nền, chỉ thu nhỏ (mặt ô trên màn hình chỉ vài chục pixel)."""
+    img = Image.open(src).convert("RGB").resize((size, size), Image.LANCZOS)
+    return _save(img, name)
+
+
+def _save(img: Image.Image, name: str) -> str:
+    root = os.path.join(os.path.dirname(__file__), "..", "..")
+    dst = os.path.normpath(os.path.join(root, "public", "sprites", f"{name}.webp"))
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    img.save(dst, "WEBP", quality=88, method=6)
+    return f"{dst}  {img.size[0]}x{img.size[1]}  {os.path.getsize(dst) // 1024} KB"
+
+
+def cutout(src: str, name: str, max_side: int = MAX_SIDE) -> str:
     rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
     mn = rgb.min(axis=2)
     spread = rgb.max(axis=2) - mn
@@ -43,16 +59,17 @@ def cutout(src: str, name: str) -> str:
     y0, y1 = max(ys.min() - PAD, 0), min(ys.max() + PAD, out.shape[0])
     x0, x1 = max(xs.min() - PAD, 0), min(xs.max() + PAD, out.shape[1])
     img = Image.fromarray(out[y0:y1, x0:x1], "RGBA")
-    scale = MAX_SIDE / max(img.size)
+    scale = max_side / max(img.size)
     if scale < 1:
         img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
-
-    root = os.path.join(os.path.dirname(__file__), "..", "..")
-    dst = os.path.normpath(os.path.join(root, "public", "sprites", f"{name}.webp"))
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
-    img.save(dst, "WEBP", quality=88, method=6)
-    return f"{dst}  {img.size[0]}x{img.size[1]}  {os.path.getsize(dst) // 1024} KB"
+    return _save(img, name)
 
 
 if __name__ == "__main__":
-    print(cutout(sys.argv[1], sys.argv[2]))
+    src, name = sys.argv[1], sys.argv[2]
+    if "--texture" in sys.argv:
+        print(texture(src, name))
+    elif "--backdrop" in sys.argv:
+        print(cutout(src, name, max_side=1536))
+    else:
+        print(cutout(src, name))

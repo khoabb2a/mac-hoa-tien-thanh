@@ -45,3 +45,57 @@ Output a square 1:1 image.
 
 fs.writeFileSync(path.join(DIR, 'PROMPTS.md'), md);
 console.log('Đã ghi tools/art/PROMPTS.md');
+
+// ---------- địa hình: TERRAIN_PROMPTS.md ----------
+const terrain = JSON.parse(fs.readFileSync(path.join(DIR, 'terrain.json'), 'utf8'));
+const styleSrc = fs.readFileSync(path.join(DIR, 'style-terrain.md'), 'utf8');
+const styleOf = (kind) => {
+  const m = styleSrc.match(new RegExp(`## ${kind}\\n([\\s\\S]*?)(?=\\n## |$)`));
+  if (!m) throw new Error(`style-terrain.md thiếu khối "## ${kind}"`);
+  return m[1].trim();
+};
+const KIND_VI = { backdrop: 'Phông núi', object: 'Vật thể isometric', texture: 'Texture mặt ô' };
+
+let tmd = `# Prompt địa hình — Mặc Họa Tiên Thành
+
+Sinh tự động từ \`terrain.json\` + \`style-terrain.md\` (\`npm run art:prompts\`). Đừng sửa trực tiếp.
+
+## Cách dùng
+1. Vẽ **ưu tiên 1** trước (6 ảnh): đủ để thay toàn bộ địa hình khối hiện tại. Ưu tiên 2 là cây/đá trang trí thêm.
+2. **Vật thể** (cây, đá, vách): đính kèm đúng ảnh khung ghi bên dưới (\`art/blockout/guide_*.png\`) rồi dán prompt.
+3. **Texture** và **phông núi**: không cần đính kèm ảnh, chỉ dán prompt. Chọn đúng tỉ lệ khung ghi bên dưới nếu app cho chọn.
+4. Gửi ảnh cho Claude, ghi kèm tên (vd. \`tung\`, \`mat_nuoc\`).
+
+| Tên | Loại | Ưu tiên | Dùng trong game |
+| --- | --- | --- | --- |
+`;
+const entries = Object.entries(terrain).sort((a, b) => a[1].priority - b[1].priority);
+for (const [key, a] of entries) tmd += `| \`${key}\` | ${KIND_VI[a.kind]} | ${a.priority} | ${a.use} |\n`;
+tmd += '\n';
+
+for (const [key, a] of entries) {
+  const attach = a.guide ? `Đính kèm: \`art/blockout/${a.guide}\` (Image 1)` : 'Không đính kèm ảnh';
+  const aspect = a.aspect ?? '1:1';
+  const tail =
+    a.kind === 'object'
+      ? 'Image 1 is the PLACEMENT GUIDE only — do not draw it.\nOutput a square 1:1 image.'
+      : a.kind === 'texture'
+        ? 'Output a square 1:1 seamless tileable texture.'
+        : `Output a wide ${aspect} image.`;
+  tmd += `## ${key} — ${a.use}
+
+Ưu tiên ${a.priority} · Tỉ lệ ${aspect} · ${attach}
+
+\`\`\`text
+${styleOf(a.kind)}
+
+## Subject
+${a.subject}
+
+${tail}
+\`\`\`
+
+`;
+}
+fs.writeFileSync(path.join(DIR, 'TERRAIN_PROMPTS.md'), tmd);
+console.log('Đã ghi tools/art/TERRAIN_PROMPTS.md');
