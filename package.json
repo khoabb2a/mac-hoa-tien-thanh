@@ -7,7 +7,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "art:gen": "node tools/art/gen.mjs",
+    "art:render": "python tools/art/render_blockouts.py"
   },
   "repository": {
     "type": "git",

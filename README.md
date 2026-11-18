@@ -44,3 +44,19 @@ iPhone SE (2020) và Samsung Galaxy Note 10 trở lên. Máy yếu tự chuyển
 ## Giấy phép / License
 
 Chưa công bố — mã nguồn riêng tư. / Not yet licensed — private source.
+
+## Pipeline đồ họa AI / AI art pipeline
+
+Toàn bộ hình ảnh do AI vẽ (GDD mục 3.4). Bước hiện có:
+
+1. **Khối thô → ảnh đầu vào** (đã có sẵn trong `art/blockout/`): `npm run dev`, rồi `npm run art:render` (cần Python + Playwright).
+2. **AI vẽ bằng Gemini (Nano Banana):**
+   ```bash
+   cp .env.example .env        # điền GEMINI_API_KEY
+   npm run art:gen -- --b chinhDien --n 4
+   npm run art:gen -- --list   # xem model ảnh khóa của bạn dùng được
+   ```
+   Ảnh ra ở `art/generated/<loại>/`, mở `art/generated/index.html` để so với khối thô.
+3. Phong cách sửa ở `tools/art/style-prompt.md`; mô tả từng công trình ở `tools/art/subjects.json`.
+
+Loại có sẵn: `chinhDien`, `tinhXa`, `tuLinhTran`, `duocVien`.
