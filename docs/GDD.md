@@ -9,7 +9,7 @@ Tệp này chỉ là tóm tắt để code tham chiếu nhanh; khi lệch nhau, 
 | Thể loại | City/sect builder tiên hiệp kiểu SimCity, thư giãn, không game over |
 | Nền tảng | Web PWA, màn dọc một tay; sàn thiết bị iPhone SE 2020 & Galaxy Note 10 |
 | Engine | Three.js (WebGL 2) + TypeScript + Vite + Preact |
-| Đồ họa | Thủy mặc isometric 2:1, camera không xoay; địa hình/nước/sương bằng shader mực; công trình là sprite **100% AI vẽ** từ khối thô bằng code |
+| Đồ họa | Thủy mặc isometric 2:1, camera không xoay; địa hình/nước/sương bằng shader mực; công trình là sprite **100% AI vẽ** (Gemini) từ khối thô bằng code — **đã chốt ở cổng 1 (18/11/2026)** |
 | Ngôn ngữ | Song ngữ Việt – Anh từ bản đầu |
 | Kiếm tiền | Không (giai đoạn đầu): không quảng cáo, không mua trong game |
 
@@ -38,9 +38,14 @@ Tam Tài Khí (≈ RCI) · Thiên Nhãn (overlay mực loang) · bong bóng ch�
 | Vertical slice: Động Phủ → Tiên Trấn, đệ tử, kỳ ngộ, Thiên Nhãn | 7–10 | 5 người chơi thử thấy ổn |
 | MVP: cấp 1–3, 25 công trình, 4 thảm họa, PWA offline | 11–16 | Phát hành thử |
 
+## Tiến độ
+- [x] Art spike: 4 họa bản AI trong game, nút so với khối thô — **cổng 1 qua: chọn họa bản AI**
+- [x] Công cụ xây: bảng Xây, đặt hai bước (bóng mờ ở tâm màn hình, đỏ khi vướng/thiếu tiền), linh lộ chạm 2 điểm (chữ L), phá dỡ hoàn 50%
+- [x] Lưu game IndexedDB (tự lưu) + xuất/nhập JSON + chơi lại
+
 ## Việc tiếp theo trong code
-- [ ] Công cụ vẽ linh lộ và đặt công trình (đặt hai bước, bóng mờ phong thủy)
-- [ ] Lưu game IndexedDB + xuất/nhập JSON
+- [ ] Chấm phong thủy (lớp 1) khi cầm công trình
+- [ ] Họa bản AI cho địa hình: núi, nước, cây, đá (thay khối nón)
 - [ ] Chuyển `World` vào Web Worker
 - [ ] Vùng phàm trần tự mọc + Tam Tài Khí
 - [ ] Script render khối thô → ảnh nét + độ sâu cho pipeline AI

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { Terrain } from '../sim/grid';
+import { BUILDING_SIZE, Terrain, type Building, type BuildingType } from '../sim/grid';
 import { POWERED_THRESHOLD } from '../sim/linhKhi';
-import type { World } from '../sim/world';
+import { lPath } from '../sim/path';
+import type { ActionFail, World } from '../sim/world';
 import { buildBlockout } from './blockout/buildings';
 import { inkMaterial, withInkEdges } from './inkMaterial';
 import { PALETTE } from './palette';
@@ -12,11 +13,36 @@ const AZIMUTH = Math.PI / 4;
 const ELEVATION = Math.PI / 6;
 const MIN_VIEW = 6;
 const MAX_VIEW = 30;
+const MAX_MARKS = 128;
 
 export interface SceneOptions {
   /** Mức đồ họa "Giản" cho máy yếu (iPhone SE 2020): giảm độ phân giải, tắt hiệu ứng phụ. */
   low: boolean;
 }
+
+/** Công cụ đang cầm (GDD 9.2). Trạng thái giao diện, không phải luật chơi. */
+export type Tool =
+  | { kind: 'none' }
+  | { kind: 'build'; type: BuildingType }
+  | { kind: 'road' }
+  | { kind: 'demolish' };
+
+/** Thông tin xem trước gửi lên HUD để hiện thanh Xác nhận/Hủy. */
+export interface Preview {
+  tool: Tool['kind'];
+  /** Đã có gì để xác nhận chưa (vd. đường cần đủ hai điểm). */
+  ready: boolean;
+  ok: boolean;
+  reason?: ActionFail;
+  /** Dương = tốn, âm = được hoàn. */
+  cost: number;
+  /** Với đường: đã chọn điểm đầu chưa. */
+  hasStart?: boolean;
+}
+
+export type ActionOutcome =
+  | { ok: true; kind: Tool['kind']; type?: BuildingType; cost: number }
+  | { ok: false; kind: Tool['kind']; reason: ActionFail };
 
 export class IsoScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -29,14 +55,27 @@ export class IsoScene {
   private tint!: THREE.InstancedBufferAttribute;
   private buildingGroups = new Map<number, THREE.Group>();
   private bubbles = new Map<number, THREE.Sprite>();
-  private spinners: THREE.Object3D[] = [];
+  private spinners = new Map<number, THREE.Object3D[]>();
   private sprites = new Map<number, THREE.Sprite>();
   /** true = hiện họa bản AI vẽ; false = khối thô (để so sánh). */
   private artMode = true;
   private readonly viewQuat: THREE.Quaternion;
   private overlay = false;
   private timer = new THREE.Timer();
+  private seenRevision = -1;
+
+  // công cụ
+  private tool: Tool = { kind: 'none' };
+  private marks!: THREE.InstancedMesh;
+  private ghost: THREE.Sprite | null = null;
+  private ghostType: BuildingType | null = null;
+  private buildAt: [number, number] = [0, 0];
+  private roadStart: [number, number] | null = null;
+  private roadEnd: [number, number] | null = null;
+  private demolishTile: [number, number] | null = null;
+
   private onSelect: (id: number | null) => void = () => {};
+  private onPreview: (p: Preview | null) => void = () => {};
 
   constructor(canvas: HTMLCanvasElement, world: World, opts: SceneOptions) {
     this.world = world;
@@ -54,10 +93,10 @@ export class IsoScene {
 
     this.buildTerrain();
     this.buildMountains();
-    for (const b of world.grid.buildings) this.addBuilding(b.id);
-    this.refreshOverlay();
+    this.buildMarks();
+    this.sync();
 
-    world.subscribe(() => this.refreshOverlay());
+    world.subscribe(() => this.sync());
     this.bindInput(canvas);
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -65,6 +104,10 @@ export class IsoScene {
 
   setOnSelect(fn: (id: number | null) => void): void {
     this.onSelect = fn;
+  }
+
+  setOnPreview(fn: (p: Preview | null) => void): void {
+    this.onPreview = fn;
   }
 
   setArtMode(on: boolean): void {
@@ -78,11 +121,150 @@ export class IsoScene {
 
   setOverlay(on: boolean): void {
     this.overlay = on;
-    this.refreshOverlay();
+    this.paintTiles();
   }
 
   start(): void {
     this.renderer.setAnimationLoop(() => this.frame());
+  }
+
+  // ---------- công cụ ----------
+
+  setTool(tool: Tool): void {
+    this.tool = tool;
+    this.roadStart = this.roadEnd = this.demolishTile = null;
+    this.setGhost(tool.kind === 'build' ? tool.type : null);
+    this.updateToolPreview();
+  }
+
+  /** Thực hiện hành động đang xem trước. Công cụ vẫn được giữ để làm tiếp. */
+  confirm(): ActionOutcome | null {
+    const t = this.tool;
+    if (t.kind === 'build') {
+      const [x, y] = this.buildAt;
+      const r = this.world.build(t.type, x, y);
+      this.updateToolPreview();
+      return r.ok ? { ok: true, kind: 'build', type: t.type, cost: r.cost } : { ok: false, kind: 'build', reason: r.reason };
+    }
+    if (t.kind === 'road' && this.roadStart && this.roadEnd) {
+      const r = this.world.buildRoad(this.roadPath());
+      if (r.ok) this.roadStart = this.roadEnd = null;
+      this.updateToolPreview();
+      return r.ok ? { ok: true, kind: 'road', cost: r.cost } : { ok: false, kind: 'road', reason: r.reason };
+    }
+    if (t.kind === 'demolish' && this.demolishTile) {
+      const r = this.world.demolishAt(...this.demolishTile);
+      this.demolishTile = null;
+      this.updateToolPreview();
+      return r.ok ? { ok: true, kind: 'demolish', cost: r.cost } : { ok: false, kind: 'demolish', reason: r.reason };
+    }
+    return null;
+  }
+
+  private roadPath(): Array<[number, number]> {
+    const [ax, ay] = this.roadStart!;
+    const [bx, by] = this.roadEnd ?? this.roadStart!;
+    return lPath(ax, ay, bx, by);
+  }
+
+  private setGhost(type: BuildingType | null): void {
+    if (this.ghost) {
+      this.scene.remove(this.ghost);
+      this.ghost.material.dispose();
+      this.ghost = null;
+    }
+    this.ghostType = type;
+    const url = type && SPRITE_URL[type];
+    if (!type || !url) return;
+    const mat = new THREE.SpriteMaterial({ transparent: true, opacity: 0.72, depthTest: false, depthWrite: false });
+    const ghost = new THREE.Sprite(mat);
+    ghost.renderOrder = 900;
+    ghost.visible = false;
+    this.scene.add(ghost);
+    this.ghost = ghost;
+    mat.map = loadSpriteTexture(url, () => {
+      mat.needsUpdate = true;
+      this.updateToolPreview();
+    });
+  }
+
+  /** Tính lại vị trí bóng mờ, ô đánh dấu và gửi xem trước lên HUD. */
+  private updateToolPreview(): void {
+    const marks: Array<[number, number]> = [];
+    let preview: Preview | null = null;
+    let good = true;
+    const t = this.tool;
+
+    if (t.kind === 'build') {
+      const center = this.groundAt(0, -0.05);
+      const g = this.world.grid;
+      const [w, h] = [g.width, g.height];
+      const [fw, fh] = BUILDING_SIZE[t.type];
+      const x = THREE.MathUtils.clamp(Math.floor(center.x - fw / 2 + 0.5), 0, w - fw);
+      const y = THREE.MathUtils.clamp(Math.floor(center.z - fh / 2 + 0.5), 0, h - fh);
+      this.buildAt = [x, y];
+      const r = this.world.previewBuild(t.type, x, y);
+      good = r.ok;
+      for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) marks.push([x + dx, y + dy]);
+      preview = { tool: 'build', ready: true, ok: r.ok, reason: r.ok ? undefined : r.reason, cost: r.cost };
+      this.placeGhost(t.type, x, y, r.ok);
+    } else if (t.kind === 'road') {
+      if (this.roadStart) {
+        const path = this.roadPath();
+        marks.push(...path);
+        const r = this.world.previewRoad(path);
+        good = r.ok;
+        preview = { tool: 'road', ready: !!this.roadEnd, ok: r.ok, reason: r.ok ? undefined : r.reason, cost: r.cost, hasStart: true };
+      } else {
+        preview = { tool: 'road', ready: false, ok: true, cost: 0, hasStart: false };
+      }
+    } else if (t.kind === 'demolish') {
+      if (this.demolishTile) {
+        const [x, y] = this.demolishTile;
+        const b = this.world.grid.buildingAt(x, y);
+        if (b) for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) marks.push([b.x + dx, b.y + dy]);
+        else marks.push([x, y]);
+        good = false;
+        preview = { tool: 'demolish', ready: true, ok: true, cost: 0 };
+      } else {
+        preview = { tool: 'demolish', ready: false, ok: true, cost: 0 };
+      }
+    }
+
+    this.showMarks(marks, t.kind === 'demolish' ? 'demolish' : good ? 'good' : 'bad');
+    this.onPreview(t.kind === 'none' ? null : preview);
+  }
+
+  private placeGhost(type: BuildingType, x: number, y: number, ok: boolean): void {
+    const ghost = this.ghost;
+    const map = ghost?.material.map;
+    if (!ghost || !map?.image || this.ghostType !== type) return;
+    const probe = buildBlockout(type);
+    probe.position.set(x, 0, y);
+    const img = map.image as { width: number; height: number };
+    fitSpriteToBlockout(ghost, probe, this.viewQuat, img.height / img.width);
+    ghost.material.color.set(ok ? '#FFFFFF' : '#E8A49E');
+    ghost.visible = true;
+  }
+
+  // ---------- đồng bộ với thế giới ----------
+
+  /** Dựng lại những gì đổi trong sim: công trình thêm/bớt, đường, màu ô, bong bóng. */
+  private sync(): void {
+    if (this.world.revision !== this.seenRevision) {
+      this.seenRevision = this.world.revision;
+      const alive = new Set(this.world.grid.buildings.map((b) => b.id));
+      for (const id of [...this.buildingGroups.keys()]) if (!alive.has(id)) this.removeBuilding(id);
+      for (const b of this.world.grid.buildings) if (!this.buildingGroups.has(b.id)) this.addBuilding(b);
+      this.layoutTiles();
+      if (this.tool.kind !== 'none') this.updateToolPreview();
+    }
+    this.paintTiles();
+    for (const b of this.world.grid.buildings) {
+      const v = this.world.linhKhi.building.get(b.id) ?? 0;
+      const bubble = this.bubbles.get(b.id);
+      if (bubble) bubble.visible = b.type !== 'tuLinhTran' && v < POWERED_THRESHOLD;
+    }
   }
 
   // ---------- dựng cảnh ----------
@@ -93,16 +275,21 @@ export class IsoScene {
     this.tint = new THREE.InstancedBufferAttribute(new Float32Array(g.width * g.height * 3).fill(1), 3);
     geo.setAttribute('aTint', this.tint);
     this.tiles = new THREE.InstancedMesh(geo, inkMaterial('#FFFFFF', '#C9C0AC', true), g.width * g.height);
+    this.scene.add(this.tiles);
+  }
+
+  private layoutTiles(): void {
+    const g = this.world.grid;
     const m = new THREE.Matrix4();
     for (let y = 0; y < g.height; y++) {
       for (let x = 0; x < g.width; x++) {
         const i = g.idx(x, y);
-        const h = g.terrain[i] === Terrain.Water ? -0.08 : g.road[i] ? 0.02 : 0;
+        const h = g.road[i] ? 0.02 : g.terrain[i] === Terrain.Water ? -0.08 : 0;
         m.makeTranslation(x + 0.5, h - 0.06, y + 0.5);
         this.tiles.setMatrixAt(i, m);
       }
     }
-    this.scene.add(this.tiles);
+    this.tiles.instanceMatrix.needsUpdate = true;
   }
 
   /** Màu từng ô; khi bật Thiên Nhãn, linh lộ chuyển sang sắc thạch thanh theo lượng linh khí. */
@@ -112,18 +299,45 @@ export class IsoScene {
     const c = new THREE.Color();
     const paper = new THREE.Color(PALETTE.paperDeep);
     const qi = new THREE.Color(PALETTE.thachThanh);
+    const greenish = new THREE.Color(PALETTE.thanhLuc);
+    const dim = new THREE.Color('#D9D4C8');
     for (let i = 0; i < g.width * g.height; i++) {
-      if (g.terrain[i] === Terrain.Water) c.set(PALETTE.water);
-      else if (g.terrain[i] === Terrain.Rock) c.set(PALETTE.inkThanh);
-      else if (g.road[i]) {
+      if (g.road[i]) {
         if (this.overlay) c.copy(paper).lerp(qi, Math.min(lk[i] / 250, 1));
-        else c.set('#D6CCB6');
-      } else if (this.overlay && g.vein[i]) c.set(PALETTE.dangHoang);
-      else c.set(PALETTE.paper).lerp(new THREE.Color(PALETTE.thanhLuc), ((i * 37) % 11) / 60);
-      if (this.overlay && !g.road[i] && g.terrain[i] === Terrain.Grass && !g.vein[i]) c.lerp(new THREE.Color('#D9D4C8'), 0.6);
+        else c.set(g.terrain[i] === Terrain.Water ? '#C9BBA0' : '#D6CCB6'); // trên nước = cầu gỗ
+      } else if (g.terrain[i] === Terrain.Water) c.set(PALETTE.water);
+      else if (g.terrain[i] === Terrain.Rock) c.set(PALETTE.inkThanh);
+      else if (this.overlay && g.vein[i]) c.set(PALETTE.dangHoang);
+      else c.set(PALETTE.paper).lerp(greenish, ((i * 37) % 11) / 60);
+      if (this.overlay && !g.road[i] && g.terrain[i] === Terrain.Grass && !g.vein[i]) c.lerp(dim, 0.6);
       this.tint.setXYZ(i, c.r, c.g, c.b);
     }
     this.tint.needsUpdate = true;
+  }
+
+  private buildMarks(): void {
+    const geo = new THREE.PlaneGeometry(0.94, 0.94).rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55, depthWrite: false });
+    this.marks = new THREE.InstancedMesh(geo, mat, MAX_MARKS);
+    this.marks.count = 0;
+    this.marks.renderOrder = 50;
+    this.marks.frustumCulled = false; // vị trí đổi liên tục, hộp bao tính một lần sẽ sai
+    this.scene.add(this.marks);
+  }
+
+  private showMarks(tiles: Array<[number, number]>, kind: 'good' | 'bad' | 'demolish'): void {
+    const color = new THREE.Color(kind === 'good' ? PALETTE.dangHoang : kind === 'bad' ? PALETTE.chuSa : PALETTE.inkTrong);
+    const m = new THREE.Matrix4();
+    const n = Math.min(tiles.length, MAX_MARKS);
+    for (let k = 0; k < n; k++) {
+      const [x, y] = tiles[k];
+      m.makeTranslation(x + 0.5, 0.05, y + 0.5);
+      this.marks.setMatrixAt(k, m);
+      this.marks.setColorAt(k, color);
+    }
+    this.marks.count = n;
+    this.marks.instanceMatrix.needsUpdate = true;
+    if (this.marks.instanceColor) this.marks.instanceColor.needsUpdate = true;
   }
 
   private buildMountains(): void {
@@ -145,16 +359,16 @@ export class IsoScene {
     }
   }
 
-  private addBuilding(id: number): void {
-    const b = this.world.grid.buildings.find((v) => v.id === id);
-    if (!b) return;
+  private addBuilding(b: Building): void {
+    const id = b.id;
     const group = buildBlockout(b.type);
     group.position.set(b.x, 0, b.y);
-    group.userData.buildingId = id;
+    const spin: THREE.Object3D[] = [];
     group.traverse((o) => {
       o.userData.buildingId = id;
-      if (o.name === 'spin') this.spinners.push(o);
+      if (o.name === 'spin') spin.push(o);
     });
+    this.spinners.set(id, spin);
     this.scene.add(group);
     this.buildingGroups.set(id, group);
 
@@ -183,15 +397,16 @@ export class IsoScene {
     bubble.renderOrder = 1000;
     this.scene.add(bubble);
     this.bubbles.set(id, bubble);
+    this.setArtMode(this.artMode);
   }
 
-  private refreshOverlay(): void {
-    this.paintTiles();
-    for (const b of this.world.grid.buildings) {
-      const v = this.world.linhKhi.building.get(b.id) ?? 0;
-      const bubble = this.bubbles.get(b.id);
-      if (bubble) bubble.visible = b.type !== 'tuLinhTran' && v < POWERED_THRESHOLD;
+  private removeBuilding(id: number): void {
+    for (const map of [this.buildingGroups, this.sprites, this.bubbles] as Array<Map<number, THREE.Object3D>>) {
+      const o = map.get(id);
+      if (o) this.scene.remove(o);
+      map.delete(id);
     }
+    this.spinners.delete(id);
   }
 
   // ---------- camera & input ----------
@@ -210,9 +425,10 @@ export class IsoScene {
   }
 
   private placeCamera(): void {
-    const off = viewDirection().multiplyScalar(60);
-    this.camera.position.copy(this.target).add(off);
+    this.camera.position.copy(this.target).add(viewDirection().multiplyScalar(60));
     this.camera.lookAt(this.target);
+    this.camera.updateMatrixWorld();
+    if (this.tool.kind === 'build') this.updateToolPreview();
   }
 
   private zoom(factor: number): void {
@@ -230,6 +446,15 @@ export class IsoScene {
     this.target.x = THREE.MathUtils.clamp(this.target.x, 0, g.width);
     this.target.z = THREE.MathUtils.clamp(this.target.z, 0, g.height);
     this.placeCamera();
+  }
+
+  /** Điểm trên mặt đất (y = 0) dưới một vị trí màn hình (tọa độ NDC). */
+  private groundAt(ndcX: number, ndcY: number): THREE.Vector3 {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const hit = new THREE.Vector3();
+    ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit);
+    return hit;
   }
 
   private bindInput(canvas: HTMLCanvasElement): void {
@@ -259,7 +484,7 @@ export class IsoScene {
       }
     });
     const up = (e: PointerEvent) => {
-      if (pts.size === 1 && moved < 8) this.pick(e.clientX, e.clientY);
+      if (pts.size === 1 && moved < 8) this.tap(e.clientX, e.clientY);
       pts.delete(e.pointerId);
       if (pts.size < 2) pinch = 0;
     };
@@ -268,10 +493,30 @@ export class IsoScene {
     canvas.addEventListener('wheel', (e) => { e.preventDefault(); this.zoom(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
   }
 
-  private pick(px: number, py: number): void {
-    const ndc = new THREE.Vector2((px / window.innerWidth) * 2 - 1, -(py / window.innerHeight) * 2 + 1);
+  private tap(px: number, py: number): void {
+    const ndcX = (px / window.innerWidth) * 2 - 1;
+    const ndcY = -(py / window.innerHeight) * 2 + 1;
+    const t = this.tool;
+    if (t.kind === 'road' || t.kind === 'demolish') {
+      const p = this.groundAt(ndcX, ndcY);
+      const tile: [number, number] = [Math.floor(p.x), Math.floor(p.z)];
+      if (!this.world.grid.inBounds(...tile)) return;
+      if (t.kind === 'road') {
+        if (!this.roadStart || this.roadEnd) {
+          this.roadStart = tile;
+          this.roadEnd = null;
+        } else this.roadEnd = tile;
+      } else this.demolishTile = tile;
+      this.updateToolPreview();
+      return;
+    }
+    if (t.kind === 'build') return; // đặt bằng nút Đặt, bản đồ chỉ để kéo
+    this.pick(ndcX, ndcY);
+  }
+
+  private pick(ndcX: number, ndcY: number): void {
     const ray = new THREE.Raycaster();
-    ray.setFromCamera(ndc, this.camera);
+    ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const targets: THREE.Object3D[] = [];
     for (const [id, g] of this.buildingGroups) {
       const sp = this.sprites.get(id);
@@ -286,7 +531,7 @@ export class IsoScene {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
     this.world.update(dt);
-    for (const s of this.spinners) s.rotation.z += dt * 0.6;
+    for (const list of this.spinners.values()) for (const s of list) s.rotation.z += dt * 0.6;
     this.renderer.render(this.scene, this.camera);
   }
 }

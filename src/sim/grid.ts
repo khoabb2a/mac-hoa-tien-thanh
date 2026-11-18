@@ -17,6 +17,16 @@ export interface Building {
   h: number;
 }
 
+export interface GridSave {
+  width: number;
+  height: number;
+  terrain: number[];
+  road: number[];
+  vein: number[];
+  buildings: Building[];
+  nextId: number;
+}
+
 export const BUILDING_SIZE: Record<BuildingType, [number, number]> = {
   tuLinhTran: [2, 2],
   chinhDien: [3, 3],
@@ -82,6 +92,59 @@ export class Grid {
     if (this.terrain[i] === Terrain.Rock || this.occupant[i] !== -1) return false;
     this.road[i] = 1; // linh lộ đi qua nước = cầu
     return true;
+  }
+
+  buildingAt(x: number, y: number): Building | undefined {
+    if (!this.inBounds(x, y)) return undefined;
+    const id = this.occupant[this.idx(x, y)];
+    return id === -1 ? undefined : this.buildings.find((b) => b.id === id);
+  }
+
+  removeBuilding(id: number): Building | undefined {
+    const k = this.buildings.findIndex((b) => b.id === id);
+    if (k === -1) return undefined;
+    const [b] = this.buildings.splice(k, 1);
+    for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) this.occupant[this.idx(b.x + dx, b.y + dy)] = -1;
+    return b;
+  }
+
+  clearRoad(x: number, y: number): boolean {
+    if (!this.inBounds(x, y)) return false;
+    const i = this.idx(x, y);
+    if (!this.road[i]) return false;
+    this.road[i] = 0;
+    return true;
+  }
+
+  canRoad(x: number, y: number): boolean {
+    if (!this.inBounds(x, y)) return false;
+    const i = this.idx(x, y);
+    return this.terrain[i] !== Terrain.Rock && this.occupant[i] === -1;
+  }
+
+  toJSON(): GridSave {
+    return {
+      width: this.width,
+      height: this.height,
+      terrain: Array.from(this.terrain),
+      road: Array.from(this.road),
+      vein: Array.from(this.vein),
+      buildings: this.buildings.map((b) => ({ ...b })),
+      nextId: this.nextId,
+    };
+  }
+
+  static fromJSON(s: GridSave): Grid {
+    const g = new Grid(s.width, s.height);
+    g.terrain.set(s.terrain);
+    g.road.set(s.road);
+    g.vein.set(s.vein);
+    for (const b of s.buildings) {
+      g.buildings.push({ ...b });
+      for (let dy = 0; dy < b.h; dy++) for (let dx = 0; dx < b.w; dx++) g.occupant[g.idx(b.x + dx, b.y + dy)] = b.id;
+    }
+    g.nextId = s.nextId;
+    return g;
   }
 
   /** Các ô kề cạnh (4 hướng) quanh chu vi một công trình. */
