@@ -74,6 +74,7 @@ async function boot(): Promise<void> {
         return false;
       }
     },
+    focusTile: (x, y) => scene.focusTile(x, y),
     newGame: () => {
       resetting = true;
       void clearGame().then(() => location.reload());
@@ -98,7 +99,7 @@ async function boot(): Promise<void> {
     (window as unknown as { __debug: object }).__debug = {
       advance: (terms = 1) => sim.act({ k: 'debugAdvance', terms }),
       tile: (x: number, y: number) => scene.tileToScreen(x, y),
-      stats: () => ({ ...world.stats, money: world.linhThach }),
+      stats: () => ({ ...world.stats, money: world.linhThach, quest: world.questIndex, coverage: world.linhKhi.coverage }),
       mode: sim.mode,
     };
   }

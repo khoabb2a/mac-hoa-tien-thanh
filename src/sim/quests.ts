@@ -1,0 +1,79 @@
+import { fengShuiAt } from './fengShui';
+import type { World } from './world';
+import { ZONE_ID } from './zones';
+
+/**
+ * Thiên Đạo Lệnh — chuỗi nhiệm vụ dẫn dắt (GDD 9.4). Mỗi lệnh đo trực tiếp từ trạng thái World,
+ * nên tự hoàn thành khi người chơi làm đúng việc, dù làm theo cách nào.
+ * Chữ hiển thị: `quest.<id>.title|desc|hint` trong i18n.
+ */
+
+/** Nơi "Chỉ cho tôi" đưa người chơi tới: một nút trên HUD và/hoặc một ô trên bản đồ. */
+export type QuestUi = 'build' | 'zone' | 'eye' | 'speed' | 'demand';
+export interface QuestFocus {
+  ui?: QuestUi;
+  tile?: [number, number];
+}
+
+export interface QuestDef {
+  id: string;
+  /** Tiến độ hiện tại; xong khi ≥ target. */
+  progress: (w: World) => number;
+  target: number;
+  reward: number;
+  focus: QuestFocus;
+}
+
+function zoneCount(w: World, id: number): number {
+  let n = 0;
+  for (let i = 0; i < w.grid.zone.length; i++) if (w.grid.zone[i] === id) n++;
+  return n;
+}
+
+export const QUESTS: readonly QuestDef[] = [
+  {
+    id: 'connect',
+    progress: (w) => (w.linhKhi.coverage >= 0.999 ? 1 : 0),
+    target: 1,
+    reward: 100,
+    focus: { ui: 'build', tile: [3, 15] },
+  },
+  { id: 'zoneCu', progress: (w) => zoneCount(w, ZONE_ID.cu), target: 6, reward: 60, focus: { ui: 'zone', tile: [15, 13] } },
+  { id: 'residents', progress: (w) => w.stats.residents, target: 20, reward: 80, focus: { ui: 'speed' } },
+  { id: 'thi', progress: (w) => w.stats.thiJobs, target: 6, reward: 80, focus: { ui: 'demand' } },
+  { id: 'dien', progress: (w) => w.stats.dienJobs, target: 6, reward: 80, focus: { ui: 'zone' } },
+  {
+    id: 'vein',
+    progress: (w) =>
+      w.grid.buildings.filter((b) => {
+        if (b.type !== 'tuLinhTran') return false;
+        for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) if (w.grid.vein[w.grid.idx(x, y)]) return true;
+        return false;
+      }).length,
+    target: 2,
+    reward: 150,
+    focus: { ui: 'eye', tile: [5, 18] },
+  },
+  {
+    id: 'fengShui',
+    progress: (w) => Math.max(0, ...w.grid.buildings.filter((b) => b.type === 'tinhXa').map((b) => fengShuiAt(w.grid, b.x, b.y, b.w, b.h).score)),
+    target: 2,
+    reward: 120,
+    focus: { ui: 'build', tile: [15, 6] },
+  },
+  { id: 'population', progress: (w) => w.population, target: 100, reward: 200, focus: { ui: 'demand' } },
+  { id: 'wealth', progress: (w) => w.linhThach, target: 2000, reward: 500, focus: {} },
+];
+
+/**
+ * Xét lệnh hiện tại; xong thì thưởng và chuyển lệnh kế. Mỗi lần gọi chỉ hoàn thành tối đa một lệnh,
+ * để người chơi kịp thấy từng lệnh dù điều kiện lệnh sau đã đạt sẵn.
+ * Trả về lệnh vừa xong (hoặc null).
+ */
+export function checkQuest(w: World): QuestDef | null {
+  const q = QUESTS[w.questIndex];
+  if (!q || q.progress(w) < q.target) return null;
+  w.questIndex++;
+  w.linhThach += q.reward;
+  return q;
+}

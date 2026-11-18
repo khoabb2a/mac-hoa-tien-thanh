@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { getLang, onLangChange, setLang, t } from '../i18n';
 import type { ActionOutcome, Preview, Tool } from '../render/scene';
 import { SPRITE_URL } from '../render/sprites';
 import { BUILD_COST, BUILD_MENU, ROAD_COST } from '../sim/economy';
 import { FENG_SHUI_BONUS } from '../sim/fengShui';
+import { QUESTS, type QuestDef, type QuestUi } from '../sim/quests';
 import type { SpeedIndex } from '../sim/time';
 import type { World } from '../sim/world';
 import { ZONE_COST, ZONES, type ZoneType } from '../sim/zones';
@@ -18,6 +19,8 @@ export interface HudActions {
   exportSave: () => void;
   importSave: (file: File) => Promise<boolean>;
   newGame: () => void;
+  /** Lướt camera tới ô và khoanh vòng (nút "Chỉ cho tôi"). */
+  focusTile: (x: number, y: number) => void;
 }
 
 interface Props {
@@ -42,6 +45,12 @@ export function Hud({ world, selected, preview, actions }: Props) {
   const [tool, setToolState] = useState<Tool>({ kind: 'none' });
   const [toast, setToast] = useState<{ text: string; bad: boolean } | null>(null);
   const toastTimer = useRef<number>(0);
+  const [tut, setTut] = useState<number | null>(() => (tutorialDone() ? null : 0));
+  const [questOpen, setQuestOpen] = useState(false);
+  const [pulse, setPulse] = useState<QuestUi | null>(null);
+  const pulseTimer = useRef<number>(0);
+  const lastQuest = useRef(world.questIndex);
+  const [questFlash, setQuestFlash] = useState(false);
 
   useEffect(() => {
     const rerender = () => force((n) => n + 1);
@@ -52,10 +61,38 @@ export function Hud({ world, selected, preview, actions }: Props) {
     return () => { offW(); offL(); clearInterval(tick); clearInterval(news); };
   }, [world]);
 
-  const say = (text: string, bad = false) => {
+  const say = (text: string, bad = false, ms = 2600) => {
     setToast({ text, bad });
     clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+    toastTimer.current = window.setTimeout(() => setToast(null), ms);
+  };
+
+  // Mừng khi Worker báo đã xong một Thiên Đạo Lệnh (chỉ số tăng trong ảnh chụp).
+  useEffect(() => {
+    if (world.questIndex > lastQuest.current) {
+      const q = QUESTS[world.questIndex - 1];
+      say(t('quest.completed', { name: t(`quest.${q.id}.title`), n: q.reward }), false, 4200);
+      setQuestFlash(true);
+      window.setTimeout(() => setQuestFlash(false), 2400);
+    }
+    lastQuest.current = world.questIndex;
+  });
+
+  const showMe = (q: QuestDef) => {
+    setQuestOpen(false);
+    if (q.focus.ui === 'eye' || q.focus.ui === 'demand') chooseTool({ kind: 'none' });
+    else setPanel('none');
+    if (q.focus.tile) actions.focusTile(q.focus.tile[0], q.focus.tile[1]);
+    if (q.focus.ui) {
+      setPulse(q.focus.ui);
+      clearTimeout(pulseTimer.current);
+      pulseTimer.current = window.setTimeout(() => setPulse(null), 5000);
+    }
+  };
+
+  const endTutorial = () => {
+    setTut(null);
+    markTutorialDone();
   };
 
   const chooseTool = (next: Tool) => {
@@ -75,6 +112,7 @@ export function Hud({ world, selected, preview, actions }: Props) {
   };
 
   const onNav = (k: NavKey) => {
+    setQuestOpen(false);
     if (k === 'build') return setPanel(panel === 'build' ? 'none' : 'build');
     if (k === 'sect') return setPanel(panel === 'sect' ? 'none' : 'sect');
     if (k === 'zone') return setPanel(panel === 'zone' ? 'none' : 'zone');
@@ -100,7 +138,7 @@ export function Hud({ world, selected, preview, actions }: Props) {
           <span class="term">{t(`term.${c.termKey}`)} · {t('hud.year', { n: c.year })}</span>
           <div class="speeds">
             {([0, 1, 2] as SpeedIndex[]).map((s) => (
-              <button class={c.speed === s ? 'on' : ''} onClick={() => setSpeed(s)}>{t(`speed.${s}`)}</button>
+              <button class={`${c.speed === s ? 'on' : ''} ${s === 2 && pulse === 'speed' ? 'pulse' : ''}`} onClick={() => setSpeed(s)}>{t(`speed.${s}`)}</button>
             ))}
           </div>
         </div>
@@ -112,17 +150,25 @@ export function Hud({ world, selected, preview, actions }: Props) {
           <button class="chip art" onClick={() => { const v = !art; setArt(v); actions.setArt(v); }}>
             <span class="glyph">{art ? '畫' : '模'}</span> {art ? t('view.art') : t('view.blockout')}
           </button>
-          <button class={`chip eye ${overlay ? 'on' : ''}`} onClick={() => { const v = !overlay; setOverlay(v); actions.setOverlay(v); }}>
+          <button class={`chip eye ${overlay ? 'on' : ''} ${pulse === 'eye' ? 'pulse' : ''}`} onClick={() => { const v = !overlay; setOverlay(v); actions.setOverlay(v); }}>
             <span class="glyph">眼</span> {t('overlay.thienNhan')}
           </button>
         </>
       )}
 
       {tool.kind === 'none' && (panel === 'none' || panel === 'demand') && (
-        <DemandBars world={world} open={panel === 'demand'} onToggle={() => setPanel(panel === 'demand' ? 'none' : 'demand')} />
+        <DemandBars world={world} open={panel === 'demand'} pulse={pulse === 'demand'} onToggle={() => setPanel(panel === 'demand' ? 'none' : 'demand')} />
       )}
 
-      {sel && tool.kind === 'none' && panel === 'none' && (
+      <QuestPanel
+        world={world}
+        open={questOpen && tool.kind === 'none'}
+        flash={questFlash}
+        onToggle={() => { setQuestOpen(!questOpen); if (panel !== 'none') setPanel('none'); }}
+        onShowMe={showMe}
+      />
+
+      {sel && tool.kind === 'none' && panel === 'none' && !questOpen && (
         <div class="card">
           <strong>{t(`building.${sel.type}`)}</strong>
           <div>{t('overlay.linhKhi')}: {selQi}</div>
@@ -166,20 +212,27 @@ export function Hud({ world, selected, preview, actions }: Props) {
         </Sheet>
       )}
 
-      {panel === 'sect' && <SectPanel actions={actions} onClose={() => setPanel('none')} say={say} />}
+      {panel === 'sect' && (
+        <SectPanel
+          actions={actions}
+          onClose={() => setPanel('none')}
+          say={say}
+          onTutorial={() => { setPanel('none'); setQuestOpen(false); setTut(0); }}
+        />
+      )}
 
       {toast && <div class={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
 
       <nav class="bottombar">
         {NAV.map((k) => (
           <button
-            class={
+            class={`${
               (k === 'build' && (panel === 'build' || tool.kind === 'build' || tool.kind === 'road')) ||
               (k === 'zone' && (panel === 'zone' || tool.kind === 'zone')) ||
               (k === 'sect' && panel === 'sect')
                 ? 'on'
                 : ''
-            }
+            } ${pulse === k ? 'pulse' : ''}`}
             onClick={() => onNav(k)}
           >
             <span class="glyph">{NAV_GLYPH[k]}</span>
@@ -187,6 +240,106 @@ export function Hud({ world, selected, preview, actions }: Props) {
           </button>
         ))}
       </nav>
+
+      {tut !== null && (
+        <Tutorial step={tut} onNext={() => (tut + 1 < TUT_TARGET.length ? setTut(tut + 1) : endTutorial())} onSkip={endTutorial} />
+      )}
+    </div>
+  );
+}
+
+// ---------- Thiên Đạo Lệnh ----------
+
+function QuestPanel(p: { world: World; open: boolean; flash: boolean; onToggle: () => void; onShowMe: (q: QuestDef) => void }) {
+  const q = QUESTS[p.world.questIndex];
+  const prog = q ? Math.min(q.progress(p.world), q.target) : 0;
+  return (
+    <div class="quest">
+      <button class={`quest-pill ${p.flash ? 'flash' : ''}`} onClick={p.onToggle} aria-expanded={p.open}>
+        <span class="seal glyph">令</span>
+        <span class="qt">{q ? t(`quest.${q.id}.title`) : t('quest.label')}</span>
+        {q && <span class="qp">{t('quest.progress', { a: Math.floor(prog), b: q.target })}</span>}
+      </button>
+      {p.open && (
+        <div class="quest-card">
+          <div class="qlabel">{t('quest.label')} · {Math.min(p.world.questIndex + 1, QUESTS.length)}/{QUESTS.length}</div>
+          {q ? (
+            <>
+              <p>{t(`quest.${q.id}.desc`)}</p>
+              <p class="qhint"><b>{t('quest.hint')}:</b> {t(`quest.${q.id}.hint`)}</p>
+              <div class="qbar"><span style={{ width: `${(prog / q.target) * 100}%` }} /></div>
+              <div class="qfoot">
+                <span class="qreward">石 {t('quest.reward', { n: q.reward })}</span>
+                {(q.focus.ui || q.focus.tile) && (
+                  <button class="primary" onClick={() => p.onShowMe(q)}>{t('quest.showMe')}</button>
+                )}
+              </div>
+            </>
+          ) : (
+            <p>{t('quest.allDone')}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- hướng dẫn mở đầu ----------
+
+/** Phần tử được soi ở từng bước (null = không soi, thẻ ở giữa). */
+const TUT_TARGET: Array<string | null> = [null, null, '.stats', '.speeds', '.chip.eye', '.demand-bars', '.bottombar', '.quest-pill'];
+const TUT_KEY = 'mhtt.tutorialDone';
+
+function tutorialDone(): boolean {
+  try {
+    return localStorage.getItem(TUT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function markTutorialDone(): void {
+  try {
+    localStorage.setItem(TUT_KEY, '1');
+  } catch {
+    /* chế độ riêng tư: bỏ qua */
+  }
+}
+
+function Tutorial({ step, onNext, onSkip }: { step: number; onNext: () => void; onSkip: () => void }) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const sel = TUT_TARGET[step];
+      const el = sel ? document.querySelector(sel) : null;
+      setRect(el ? el.getBoundingClientRect() : null);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [step]);
+  const last = step === TUT_TARGET.length - 1;
+  // thẻ nằm phía đối diện phần tử được soi để không che nó
+  const place = !rect ? 'mid' : rect.top + rect.height / 2 > window.innerHeight / 2 ? 'top' : 'bottom';
+  const pad = 6;
+  return (
+    <div class="tut" role="dialog" aria-modal="true">
+      {rect ? (
+        <div class="tut-hole" style={{ left: `${rect.left - pad}px`, top: `${rect.top - pad}px`, width: `${rect.width + pad * 2}px`, height: `${rect.height + pad * 2}px` }} />
+      ) : (
+        <div class={`tut-dim ${step === 1 ? 'light' : ''}`} />
+      )}
+      <div class={`tut-card ${place}`}>
+        <div class="tut-head">
+          <span class="seal glyph">老</span>
+          <strong>{t('tut.elder')}</strong>
+          <span class="tut-step">{t('tut.step', { a: step + 1, b: TUT_TARGET.length })}</span>
+        </div>
+        <p>{t(`tut.${step}`)}</p>
+        <div class="tut-buttons">
+          {!last && <button class="ghost" onClick={onSkip}>{t('tut.skip')}</button>}
+          <button class="primary" onClick={onNext}>{last ? t('tut.start') : t('tut.next')}</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -257,13 +410,14 @@ function Item(p: { glyph?: string; img?: string; swatch?: ZoneType; name: string
   );
 }
 
-function SectPanel({ actions, onClose, say }: { actions: HudActions; onClose: () => void; say: (s: string, bad?: boolean) => void }) {
+function SectPanel({ actions, onClose, say, onTutorial }: { actions: HudActions; onClose: () => void; say: (s: string, bad?: boolean) => void; onTutorial: () => void }) {
   const [armed, setArmed] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   return (
     <Sheet title={t('sect.title')} onClose={onClose}>
       <p class="note">{t('sect.autosave')}</p>
       <div class="rows">
+        <button onClick={onTutorial}>{t('sect.tutorial')}</button>
         <button onClick={actions.exportSave}>{t('sect.export')}</button>
         <button onClick={() => file.current?.click()}>{t('sect.import')}</button>
         <input
@@ -285,7 +439,7 @@ function SectPanel({ actions, onClose, say }: { actions: HudActions; onClose: ()
 }
 
 /** Tam Tài Khí (≈ thanh RCI của SimCity): ba cột mực Cư – Thị – Điền; lên = đang thiếu, xuống = đang thừa. */
-function DemandBars({ world, open, onToggle }: { world: World; open: boolean; onToggle: () => void }) {
+function DemandBars({ world, open, pulse, onToggle }: { world: World; open: boolean; pulse: boolean; onToggle: () => void }) {
   const d = world.stats.demand;
   return (
     <div class="demand">
@@ -298,7 +452,7 @@ function DemandBars({ world, open, onToggle }: { world: World; open: boolean; on
           <p class="note">{t('demand.help')}</p>
         </div>
       )}
-      <button class="demand-bars" onClick={onToggle} aria-label={t('demand.title')}>
+      <button class={`demand-bars ${pulse ? 'pulse' : ''}`} onClick={onToggle} aria-label={t('demand.title')}>
         {ZONES.map((z) => {
           const v = d[z];
           const h = Math.round(Math.abs(v) * 26);

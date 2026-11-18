@@ -161,3 +161,59 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .actionbar .fs span { font-family: 'Noto Serif SC', serif; opacity: .3; }
 .actionbar .fs span.yes { opacity: 1; color: #8A6A1E; font-weight: 700; }
 .actionbar .fs .bonus { opacity: 1; font-family: inherit; color: #8A6A1E; }
+
+/* ---------- Thiên Đạo Lệnh ---------- */
+.toast { top: calc(var(--safe-top) + 176px); }
+.quest { position: absolute; left: 12px; right: 12px; top: calc(var(--safe-top) + 122px); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+.quest > * { pointer-events: auto; }
+.quest-pill {
+  display: flex; align-items: center; gap: 8px; max-width: 100%; min-height: 44px; padding: 4px 12px 4px 4px;
+  background: rgba(239, 230, 210, 0.94); border: 1.5px solid var(--ink); border-radius: 22px; text-align: left;
+}
+.quest-pill .qt { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.quest-pill .qp { font-size: 12px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.seal {
+  flex: none; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--chu-sa); color: var(--paper); border-radius: 6px; font-size: 20px;
+}
+.quest-pill.flash { animation: qflash 0.6s ease-in-out 4; }
+@keyframes qflash { 50% { background: #f3d9a4; transform: scale(1.04); } }
+.quest-card {
+  width: 100%; max-width: 420px; background: rgba(239, 230, 210, 0.98); border: 1.5px solid var(--ink); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; box-shadow: 0 4px 14px rgba(20, 18, 15, 0.18);
+}
+.quest-card p { margin: 6px 0; line-height: 1.35; }
+.quest-card .qlabel { font-size: 12px; font-weight: 700; color: var(--chu-sa); letter-spacing: 0.02em; }
+.quest-card .qhint { color: var(--ink-soft); }
+.qbar { height: 6px; background: rgba(20, 18, 15, 0.12); border-radius: 3px; overflow: hidden; margin: 8px 0; }
+.qbar span { display: block; height: 100%; background: var(--thach-thanh); transition: width 0.4s; }
+.qfoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.qreward { font-weight: 700; color: #8A6A1E; font-size: 12px; }
+.quest-card .primary, .tut .primary { background: var(--chu-sa); color: var(--paper); border-radius: 8px; padding: 0 14px; font-weight: 700; min-height: 44px; }
+.tut .ghost { border: 1.5px solid var(--ink); border-radius: 8px; padding: 0 14px; min-height: 44px; }
+
+/* nhấp nháy nút được "Chỉ cho tôi" */
+.pulse { animation: pulse 0.9s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(200, 55, 45, 0.55); color: var(--chu-sa); } }
+.bottombar button.pulse { border-radius: 10px; }
+
+/* ---------- hướng dẫn mở đầu ---------- */
+.tut { position: absolute; inset: 0; z-index: 50; }
+.tut-dim { position: absolute; inset: 0; background: rgba(20, 16, 10, 0.5); }
+.tut-dim.light { background: rgba(20, 16, 10, 0.15); }
+.tut-hole {
+  position: absolute; border-radius: 10px; border: 2px solid var(--chu-sa);
+  box-shadow: 0 0 0 9999px rgba(20, 16, 10, 0.5); transition: all 0.25s; pointer-events: none;
+}
+.tut-card {
+  position: absolute; left: 12px; right: 12px; margin: 0 auto; max-width: 420px;
+  background: var(--paper); border: 2px solid var(--ink); border-radius: 12px; padding: 12px 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); font-size: 14px;
+}
+.tut-card.mid { top: 50%; transform: translateY(-50%); }
+.tut-card.top { top: calc(var(--safe-top) + 24px); }
+.tut-card.bottom { bottom: calc(var(--safe-bottom) + 90px); }
+.tut-card p { margin: 8px 0 10px; line-height: 1.45; }
+.tut-head { display: flex; align-items: center; gap: 8px; }
+.tut-head .tut-step { margin-left: auto; font-size: 12px; color: var(--ink-soft); }
+.tut-buttons { display: flex; justify-content: flex-end; gap: 8px; }

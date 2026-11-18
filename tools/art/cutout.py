@@ -51,7 +51,7 @@ def _save(img: Image.Image, name: str) -> str:
     return f"{dst}  {img.size[0]}x{img.size[1]}  {os.path.getsize(dst) // 1024} KB"
 
 
-def alpha_cutout(rgb: np.ndarray, holes: bool = False) -> np.ndarray:
+def alpha_cutout(rgb: np.ndarray, holes: bool = False, holes_min: int = 300) -> np.ndarray:
     """RGB float → RGBA uint8: nền trắng nối với mép ảnh (và lỗ kín nếu holes) thành trong suốt."""
     mn = rgb.min(axis=2)
     spread = rgb.max(axis=2) - mn
@@ -60,9 +60,10 @@ def alpha_cutout(rgb: np.ndarray, holes: bool = False) -> np.ndarray:
     labels, _ = ndimage.label(near_white)
     border = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
     bg = np.isin(labels, border[border > 0])
-    if holes:  # lỗ trắng kín bên trong (vd. đá Thái Hồ) cũng là nền nếu đủ lớn
+    if holes:  # lỗ trắng kín bên trong (kẽ lá, đá Thái Hồ) cũng là nền nếu ≥ holes_min px
+        # cây/đá: holes_min nhỏ (~12) để kẽ lá trong; nhà: giữ lớn để không đục tường vôi
         sizes = ndimage.sum(near_white, labels, index=np.arange(labels.max() + 1))
-        bg |= np.isin(labels, np.nonzero(sizes > 300)[0][1:])
+        bg |= np.isin(labels, np.nonzero(sizes >= holes_min)[0][1:])
 
     alpha = np.ones(mn.shape, np.float32)
     alpha[bg] = 0
@@ -77,9 +78,9 @@ def alpha_cutout(rgb: np.ndarray, holes: bool = False) -> np.ndarray:
     return np.dstack([np.clip(col, 0, 255), alpha * 255]).astype(np.uint8)
 
 
-def cutout(src: str, name: str, max_side: int = MAX_SIDE, holes: bool = False) -> str:
+def cutout(src: str, name: str, max_side: int = MAX_SIDE, holes: bool = False, holes_min: int = 300) -> str:
     rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
-    out = alpha_cutout(rgb, holes)
+    out = alpha_cutout(rgb, holes, holes_min)
     alpha = out[..., 3] / 255.0
     ys, xs = np.nonzero(alpha > 0.02)
     y0, y1 = max(ys.min() - PAD, 0), min(ys.max() + PAD, out.shape[0])
@@ -99,4 +100,5 @@ if __name__ == "__main__":
         print(backdrop(src, name))
     else:
         side = 512 if "--small" in sys.argv else MAX_SIDE
-        print(cutout(src, name, max_side=side, holes="--holes" in sys.argv))
+        hm = int(sys.argv[sys.argv.index("--holes-min") + 1]) if "--holes-min" in sys.argv else 300
+        print(cutout(src, name, max_side=side, holes="--holes" in sys.argv or "--holes-min" in sys.argv, holes_min=hm))

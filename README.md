@@ -66,6 +66,6 @@ Toàn bộ hình ảnh do AI vẽ (GDD mục 3.4). Bước hiện có:
 
 Loại có sẵn: `chinhDien`, `tinhXa`, `tuLinhTran`, `duocVien`.
 
-**Biến thể cây/đá (sprite sheet 3×3):** prompt trong [`tools/art/SHEET_PROMPTS.md`](tools/art/SHEET_PROMPTS.md), đính kèm `art/blockout/sheet_guide_*.png`. Cắt sheet: `python tools/art/sheet.py art/source/tung_sheet_v1.png tung` → `public/sprites/decor/tung.webp` + `.json`. Game tự bốc biến thể theo ô, lật trái/phải; loại chưa có sheet dùng ảnh đơn.
+**Biến thể cây/đá (sprite sheet 3×3):** prompt trong [`tools/art/SHEET_PROMPTS.md`](tools/art/SHEET_PROMPTS.md), đính kèm `art/blockout/sheet_guide_*.png`. Cắt sheet: `python tools/art/sheet.py art/source/tung_sheet_v1.png tung --holes-min 4` → `public/sprites/decor/tung.webp` + `.json` (`--holes-min 4` làm trong cả kẽ lá trắng nhỏ; **không** dùng cho sheet nhà vì sẽ đục tường vôi). Game tự bốc biến thể theo ô, lật trái/phải; loại chưa có sheet dùng ảnh đơn.
 
 **Địa hình** (núi, cây, đá, texture ô): prompt trong [`tools/art/TERRAIN_PROMPTS.md`](tools/art/TERRAIN_PROMPTS.md), danh sách ở `tools/art/terrain.json`. Vật thể dùng ảnh khung `art/blockout/guide_*.png` (sinh bằng `python tools/art/guides.py`).

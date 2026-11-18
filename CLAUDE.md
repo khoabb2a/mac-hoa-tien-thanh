@@ -9,6 +9,7 @@ Hướng dẫn cho Claude Code khi làm việc trong repo này. GDD đầy đủ
 - Ngẫu nhiên trong luật chơi chỉ dùng `world.rng` (lưu được), không dùng `Math.random`, để Worker, bản lưu và test cho cùng kết quả.
 - `src/render/` chỉ đọc trạng thái sim để vẽ; không chứa luật chơi.
 - `src/ui/` là HUD Preact; gọi sim qua `World`, không chạm vào Three.js.
+- Nhiệm vụ (Thiên Đạo Lệnh, `sim/quests.ts`) đo thẳng từ trạng thái World; chỉ World không thụ động mới thưởng (Worker là nguồn chuẩn); `questsOn` chỉ bật cho ván chơi thật nên World dựng tay trong test không bị thưởng chen vào.
 - Đơn vị thời gian là **tiết khí** (`sim/time.ts`), không dùng ngày/giờ thực trong luật chơi.
 
 ## Song ngữ (bắt buộc)
@@ -31,7 +32,7 @@ Hướng dẫn cho Claude Code khi làm việc trong repo này. GDD đầy đủ
 - three.js luôn vẽ vật trong suốt SAU vật đục, `renderOrder` không đưa được sprite ra sau mặt ô: muốn nằm sau thì lùi sâu theo hướng nhìn và bật `depthTest` (xem phông núi `makeBackdrop`).
 - Nhà phàm trần (`render/houses.ts`): có `public/sprites/houses/<vùng>.json` thì dùng sprite (hàng = cấp), chưa có thì khối thô. Bề ngang theo nhà rộng nhất trong sheet (= bề ngang ô); đáy ảnh neo về góc trước ô theo độ phủ.
 - Vật trang trí (`render/terrainArt.ts`) chỉ để nhìn, không phải luật chơi: vị trí, biến thể, lật và co giãn đều suy ra từ ô bằng hàm băm cố định.
-- Biến thể: `public/sprites/decor/<loai>.json` (sinh bởi `tools/art/sheet.py`) — kích thước theo pixel gốc, vật lớn nhất trong sheet = `size` của loại đó.
+- Biến thể: `public/sprites/decor/<loai>.json` (sinh bởi `tools/art/sheet.py`) — kích thước theo pixel gốc, vật lớn nhất trong sheet = `size` của loại đó. Cây/đá cắt với `--holes-min 4` (kẽ lá trắng kín); sheet nhà không dùng (giữ tường vôi).
 
 ## Lệnh
 - `npm run dev` · `npm test` · `npm run typecheck` · `npm run build`

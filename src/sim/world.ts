@@ -2,6 +2,7 @@ import { BUILD_COST, BASE_POPULATION, HOUSING, INCOME_BASE, INCOME_PER_POWERED, 
 import { FENG_SHUI_BONUS, fengShuiAt } from './fengShui';
 import { Grid, Terrain, type BuildingType, type GridSave } from './grid';
 import { computeLinhKhi, POWERED_THRESHOLD, type LinhKhiResult } from './linhKhi';
+import { checkQuest } from './quests';
 import { Rng } from './rng';
 import { TietKhiClock, type SpeedIndex } from './time';
 import { canZone, growTown, TAX, townStats, ZONE_COST, ZONE_ID, type TownStats, type ZoneType } from './zones';
@@ -18,6 +19,8 @@ export interface WorldSave {
   grid: GridSave;
   /** v2: trạng thái bộ sinh ngẫu nhiên, để nhà mọc giống nhau sau khi tải lại. */
   rng?: number;
+  /** Thiên Đạo Lệnh đang làm (chỉ số trong QUESTS); thiếu = 0. */
+  questIndex?: number;
 }
 
 /** Trạng thái thế giới + luật chơi. Logic thuần (GDD 3.3), sau này chạy trong Web Worker. */
@@ -31,6 +34,10 @@ export class World {
   /** Thu nhập của tiết khí vừa qua (để HUD hiện). */
   lastIncome = 0;
   readonly rng: Rng;
+  /** Chỉ số Thiên Đạo Lệnh hiện tại (sim/quests.ts); = QUESTS.length khi đã xong hết. */
+  questIndex = 0;
+  /** Bật Thiên Đạo Lệnh (ván chơi thật); World dựng tay trong test để tắt cho luật khác khỏi bị thưởng chen vào. */
+  questsOn = false;
   /**
    * Bản sao thụ động trên luồng chính khi mô phỏng chạy trong Worker: chỉ cho đồng hồ trôi
    * để HUD mượt, còn mọi thay đổi thật đến từ applySave() theo ảnh chụp của Worker.
@@ -71,6 +78,7 @@ export class World {
     income += this.stats.residents * TAX.resident + this.stats.thiJobs * TAX.thi + this.stats.dienJobs * TAX.dien;
     this.lastIncome = Math.floor(income);
     this.linhThach += this.lastIncome;
+    if (this.questsOn) checkQuest(this);
     this.emit();
   }
 
@@ -182,6 +190,7 @@ export class World {
       linhThach: this.linhThach,
       grid: this.grid.toJSON(),
       rng: this.rng.state,
+      questIndex: this.questIndex,
     };
   }
 
@@ -190,7 +199,10 @@ export class World {
     if (s.v !== 1 && s.v !== SAVE_VERSION) throw new Error(`save version ${s.v} not supported`);
     const clock = new TietKhiClock(s.elapsed);
     clock.speed = s.speed;
-    return new World(Grid.fromJSON(s.grid), s.linhThach, clock, new Rng(s.rng));
+    const w = new World(Grid.fromJSON(s.grid), s.linhThach, clock, new Rng(s.rng));
+    w.questIndex = s.questIndex ?? 0;
+    w.questsOn = true;
+    return w;
   }
 
   /** Thay toàn bộ trạng thái bằng bản lưu (cùng kích thước bản đồ), giữ nguyên các tham chiếu. */
@@ -200,6 +212,7 @@ export class World {
     this.clock.speed = s.speed;
     this.linhThach = s.linhThach;
     if (s.rng !== undefined) this.rng.state = s.rng;
+    this.questIndex = s.questIndex ?? 0;
     this.changed();
   }
 
@@ -225,6 +238,8 @@ export class World {
     this.linhKhi = computeLinhKhi(this.grid);
     this.stats = townStats(this.grid, this.sectCount());
     this.population = this.computePopulation();
+    // Worker là nguồn chuẩn: bản sao thụ động không tự thưởng, đợi ảnh chụp.
+    if (this.questsOn && !this.passive) checkQuest(this);
     if (notify) this.emit();
   }
 
@@ -259,5 +274,7 @@ export function createDemoWorld(): World {
   g.place('tinhXa', 13, 13);
   g.place('duocVien', 6, 13);
   g.place('tinhXa', 3, 17); // không nối linh lộ → thiếu linh khí, để thử Thiên Nhãn
-  return new World(g);
+  const w = new World(g);
+  w.questsOn = true;
+  return w;
 }

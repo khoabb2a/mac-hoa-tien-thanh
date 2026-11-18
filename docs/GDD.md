@@ -51,8 +51,9 @@ Tam Tài Khí (≈ RCI) · Thiên Nhãn (overlay mực loang) · bong bóng ch�
 
 ## Việc tiếp theo trong code
 - [x] Họa bản nhà phàm trần: 3 sheet (Cư, Thị, Điền) × 3 cấp × 3 biến thể
+- [x] Hướng dẫn mở đầu (Trưởng lão Mặc Vân, 8 bước soi từng phần HUD, xem lại trong Tông môn)
+- [x] Thiên Đạo Lệnh: 9 nhiệm vụ nối nhau (`sim/quests.ts`), thưởng linh thạch, nút "Chỉ cho tôi" (camera tới ô + nhấp nháy nút), lưu trong bản lưu
+- [x] Cắt lại nền trắng sót trong kẽ lá (`--holes-min 4`)
 - [ ] Cân bằng số liệu Tam Tài Khí sau khi chơi thử
 - [x] Họa bản AI cho địa hình: phông núi, vách đá, tùng/trúc/đào, kỳ thạch, lau sậy, texture đất/đường/nước
-- [ ] Chuyển `World` vào Web Worker
-- [ ] Vùng phàm trần tự mọc + Tam Tài Khí
 - [ ] Script render khối thô → ảnh nét + độ sâu cho pipeline AI

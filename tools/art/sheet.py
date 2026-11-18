@@ -1,6 +1,6 @@
 """Cắt sprite sheet 3×3 do AI vẽ thành 9 biến thể, gom vào một ảnh atlas + file mô tả JSON.
 
-Chạy:  python tools/art/sheet.py art/source/tung_sheet_v1.png tung [--holes] [--grid 3]
+Chạy:  python tools/art/sheet.py art/source/tung_sheet_v1.png tung [--holes | --holes-min 12] [--grid 3] [--houses]
        python tools/art/sheet.py art/source/cu_sheet_v1.png cu --houses      # nhà phàm trần: hàng = cấp
 Ra:    public/sprites/decor/<loai>.webp + .json   (hoặc public/sprites/houses/ với --houses)
 
@@ -39,10 +39,10 @@ def cuts(profile: np.ndarray, n: int) -> list[int]:
     return out
 
 
-def split(src: str, kind: str, grid: int = 3, holes: bool = False, folder: str = "decor") -> str:
+def split(src: str, kind: str, grid: int = 3, holes: bool = False, folder: str = "decor", holes_min: int = 300) -> str:
     rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
     H, W = rgb.shape[:2]
-    full = alpha_cutout(rgb, holes)[..., 3] > 5
+    full = alpha_cutout(rgb, holes, holes_min)[..., 3] > 5
     variants = []
     warnings = []
     rows = cuts(full.sum(axis=1), grid)
@@ -51,7 +51,7 @@ def split(src: str, kind: str, grid: int = 3, holes: bool = False, folder: str =
         cols = cuts(full[y0:y1].sum(axis=0), grid)
         for c in range(grid):
             x0, x1 = cols[c], cols[c + 1]
-            cell = alpha_cutout(rgb[y0:y1, x0:x1], holes)
+            cell = alpha_cutout(rgb[y0:y1, x0:x1], holes, holes_min)
             a = cell[..., 3] > 5
             # bỏ chấm lạc, giữ các cụm đủ lớn (lá rơi, cánh hoa vẫn giữ nếu ≥ MIN_SPECK)
             lab, n = ndimage.label(a)
@@ -117,4 +117,6 @@ def split(src: str, kind: str, grid: int = 3, holes: bool = False, folder: str =
 if __name__ == "__main__":
     g = int(sys.argv[sys.argv.index("--grid") + 1]) if "--grid" in sys.argv else 3
     folder = "houses" if "--houses" in sys.argv else "decor"
-    print(split(sys.argv[1], sys.argv[2], grid=g, holes="--holes" in sys.argv, folder=folder))
+    hm = int(sys.argv[sys.argv.index("--holes-min") + 1]) if "--holes-min" in sys.argv else 300
+    holes = "--holes" in sys.argv or "--holes-min" in sys.argv
+    print(split(sys.argv[1], sys.argv[2], grid=g, holes=holes, folder=folder, holes_min=hm))

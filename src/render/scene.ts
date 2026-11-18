@@ -59,6 +59,8 @@ export class IsoScene {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.OrthographicCamera;
   private target = new THREE.Vector3();
+  private glide: { from: THREE.Vector3; to: THREE.Vector3; t: number } | null = null;
+  private focusRing: THREE.Mesh | null = null;
   private viewHeight = 22;
   private world: World;
   private tiles!: THREE.InstancedMesh;
@@ -162,6 +164,26 @@ export class IsoScene {
 
   start(): void {
     this.renderer.setAnimationLoop(() => this.frame());
+  }
+
+  /**
+   * "Chỉ cho tôi" (Thiên Đạo Lệnh): lướt camera tới ô (x, y) rồi khoanh vòng chu sa nhấp nháy vài giây.
+   * w/h: bề rộng vùng cần khoanh (ô).
+   */
+  focusTile(x: number, y: number, w = 2, h = 2): void {
+    const to = new THREE.Vector3(x + w / 2, 0, y + h / 2);
+    this.glide = { from: this.target.clone(), to, t: 0 };
+    if (!this.focusRing) {
+      const m = new THREE.MeshBasicMaterial({ color: PALETTE.chuSa, transparent: true, depthTest: false });
+      this.focusRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 48), m);
+      this.focusRing.rotation.x = -Math.PI / 2;
+      this.focusRing.renderOrder = 2000;
+      this.scene.add(this.focusRing);
+    }
+    this.focusRing.position.set(to.x, 0.05, to.z);
+    this.focusRing.userData.size = Math.max(w, h);
+    this.focusRing.userData.life = 4.5;
+    this.focusRing.visible = true;
   }
 
   // ---------- công cụ ----------
@@ -593,6 +615,7 @@ export class IsoScene {
     let moved = 0;
     let pinch = 0;
     canvas.addEventListener('pointerdown', (e) => {
+      this.glide = null; // người chơi kéo thì thôi lướt
       canvas.setPointerCapture(e.pointerId);
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       moved = 0;
@@ -669,6 +692,21 @@ export class IsoScene {
     this.world.update(dt);
     this.terrainMat.uniforms.uTime.value += dt;
     for (const list of this.spinners.values()) for (const s of list) s.rotation.z += dt * 0.6;
+    if (this.glide) {
+      this.glide.t = Math.min(1, this.glide.t + dt / 0.7);
+      const k = 1 - Math.pow(1 - this.glide.t, 3); // chậm dần
+      this.target.lerpVectors(this.glide.from, this.glide.to, k);
+      this.placeCamera();
+      if (this.glide.t >= 1) this.glide = null;
+    }
+    if (this.focusRing?.visible) {
+      const u = this.focusRing.userData as { size: number; life: number };
+      u.life -= dt;
+      const pulse = 1 + 0.12 * Math.sin(u.life * 6);
+      this.focusRing.scale.setScalar(u.size * 1.5 * pulse);
+      (this.focusRing.material as THREE.MeshBasicMaterial).opacity = Math.min(1, u.life) * 0.9;
+      if (u.life <= 0) this.focusRing.visible = false;
+    }
     this.renderer.render(this.scene, this.camera);
   }
 }
