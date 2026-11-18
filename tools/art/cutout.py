@@ -51,8 +51,8 @@ def _save(img: Image.Image, name: str) -> str:
     return f"{dst}  {img.size[0]}x{img.size[1]}  {os.path.getsize(dst) // 1024} KB"
 
 
-def cutout(src: str, name: str, max_side: int = MAX_SIDE, holes: bool = False) -> str:
-    rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
+def alpha_cutout(rgb: np.ndarray, holes: bool = False) -> np.ndarray:
+    """RGB float → RGBA uint8: nền trắng nối với mép ảnh (và lỗ kín nếu holes) thành trong suốt."""
     mn = rgb.min(axis=2)
     spread = rgb.max(axis=2) - mn
     near_white = (mn > 232) & (spread < 20)
@@ -74,8 +74,13 @@ def cutout(src: str, name: str, max_side: int = MAX_SIDE, holes: bool = False) -
     a = alpha[..., None]
     with np.errstate(divide="ignore", invalid="ignore"):
         col = np.where(a > 0.01, (rgb - (1 - a) * 255) / np.maximum(a, 0.01), 0)
-    out = np.dstack([np.clip(col, 0, 255), alpha * 255]).astype(np.uint8)
+    return np.dstack([np.clip(col, 0, 255), alpha * 255]).astype(np.uint8)
 
+
+def cutout(src: str, name: str, max_side: int = MAX_SIDE, holes: bool = False) -> str:
+    rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
+    out = alpha_cutout(rgb, holes)
+    alpha = out[..., 3] / 255.0
     ys, xs = np.nonzero(alpha > 0.02)
     y0, y1 = max(ys.min() - PAD, 0), min(ys.max() + PAD, out.shape[0])
     x0, x1 = max(xs.min() - PAD, 0), min(xs.max() + PAD, out.shape[1])

@@ -39,3 +39,22 @@ Must keep:
 Style:
 - Song-dynasty blue-green landscape painting (qinglü shanshui) on xuan paper: mineral jade-green (#7FA38A, #4F7A66) and stone-blue (#3E6C8C) washes over ink outlines, texture strokes on the mountain faces, atmospheric perspective (far = pale, near = dark).
 - Calm, majestic, misty. No saturated or digital-looking colors.
+
+## sheet
+Paint a SPRITE SHEET for a mobile isometric city-builder set in a xianxia (Chinese cultivation fantasy) world: a 3×3 grid showing NINE different variations of the same kind of object, so the game can scatter them without visible repetition.
+
+Must keep:
+- Image 1 is the LAYOUT GUIDE: nine equal cells, each with a grey diamond (the ground footprint, true 2:1 isometric, viewed from the front-right, 30° downward, orthographic — no perspective) and a dashed box (the maximum height). Put exactly ONE object in each cell, standing on that cell's diamond, inside its dashed box.
+- Every object stays fully inside its own cell with wide white margins — no leaf, branch or petal may cross into a neighbouring cell. Keep the cells in a strict 3×3 layout.
+- Do NOT draw the guide: no diamonds, no dashed boxes, no cell borders, no grid lines, no ground under the objects.
+- Size variety: row 1 = large (fills most of the dashed box), row 2 = medium (about two thirds), row 3 = small (about half). Within each row, vary the silhouette and lean direction.
+- All nine share the same camera angle, the same light from the upper left, the same brush style and palette.
+- Background: pure flat white (#FFFFFF), no paper texture, no shadows on the ground, no text, no numbers, no seal stamp, no frame.
+
+Style:
+- Traditional Chinese ink-wash painting (shuimo) on xuan paper, detailed like a Song-dynasty landscape painting.
+- Confident brush outlines of varying thickness, dry-brush texture strokes on rock and bark, soft wet washes, slight ink bleed.
+
+Palette (strict):
+- Mostly ink black-to-grey tones. Muted jade green (#7FA38A) and stone blue (#3E6C8C) washes for foliage and moss. Ochre (#C9A24A) only as a tiny accent. Soft pale pink only for peach blossoms.
+- No saturated colors, no digital gradients, no glossy 3D look.

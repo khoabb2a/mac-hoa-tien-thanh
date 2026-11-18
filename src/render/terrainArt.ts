@@ -17,16 +17,50 @@ interface DecorSpec {
   /** Điểm neo trên sprite (0..1), y nhỏ = đáy ảnh. */
   anchorY: number;
   footprint: 1 | 2;
+  /** Cho phép lật trái/phải ngẫu nhiên (cây, cỏ). Đá và vách giữ hướng sáng từ trái. */
+  flip: boolean;
 }
 
 export const DECOR: Record<DecorKind, DecorSpec> = {
-  tung: { url: 'sprites/tung.webp', size: 2.1, anchorY: 0.04, footprint: 1 },
-  truc: { url: 'sprites/truc.webp', size: 2.0, anchorY: 0.04, footprint: 1 },
-  dao: { url: 'sprites/dao.webp', size: 1.85, anchorY: 0.05, footprint: 1 },
-  ky_thach: { url: 'sprites/ky_thach.webp', size: 0.85, anchorY: 0.1, footprint: 1 },
-  lau_say: { url: 'sprites/lau_say.webp', size: 0.9, anchorY: 0.08, footprint: 1 },
-  vach_da: { url: 'sprites/vach_da.webp', size: 2.75, byWidth: true, anchorY: 0.02, footprint: 2 },
+  tung: { url: 'sprites/tung.webp', size: 2.1, anchorY: 0.04, footprint: 1, flip: true },
+  truc: { url: 'sprites/truc.webp', size: 2.0, anchorY: 0.04, footprint: 1, flip: true },
+  dao: { url: 'sprites/dao.webp', size: 1.85, anchorY: 0.05, footprint: 1, flip: true },
+  ky_thach: { url: 'sprites/ky_thach.webp', size: 0.85, anchorY: 0.1, footprint: 1, flip: false },
+  lau_say: { url: 'sprites/lau_say.webp', size: 0.9, anchorY: 0.08, footprint: 1, flip: true },
+  vach_da: { url: 'sprites/vach_da.webp', size: 2.75, byWidth: true, anchorY: 0.02, footprint: 2, flip: false },
 };
+
+/** Mô tả atlas biến thể do tools/art/sheet.py sinh (public/sprites/decor/<loai>.json). */
+interface SheetManifest {
+  image: string;
+  width: number;
+  height: number;
+  maxHPx: number;
+  maxWPx: number;
+  variants: Array<{ x: number; y: number; wPx: number; hPx: number; ax: number; ay: number }>;
+}
+
+const sheets = new Map<DecorKind, SheetManifest>();
+
+/** Tải các sheet biến thể có sẵn; loại nào chưa có sheet thì dùng ảnh đơn. Trả về true nếu tải được ít nhất một. */
+export async function loadDecorSheets(): Promise<boolean> {
+  const kinds = Object.keys(DECOR) as DecorKind[];
+  const results = await Promise.all(
+    kinds.map(async (k) => {
+      try {
+        const r = await fetch(`${import.meta.env.BASE_URL}sprites/decor/${k}.json`);
+        if (!r.ok || !r.headers.get('content-type')?.includes('json')) return false;
+        const m = (await r.json()) as SheetManifest;
+        if (!m.variants?.length) return false;
+        sheets.set(k, m);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+  );
+  return results.some(Boolean);
+}
 
 export interface DecorItem {
   kind: DecorKind;
@@ -88,7 +122,7 @@ export function decorFor(grid: Grid): DecorItem[] {
   return out;
 }
 
-/** Tạo sprite cho một vật trang trí, neo vào ô theo hướng camera. */
+/** Tạo sprite cho một vật trang trí: chọn biến thể theo ô, lật và co giãn nhẹ để không lặp. */
 export function makeDecorSprite(item: DecorItem): THREE.Sprite {
   const spec = DECOR[item.kind];
   const mat = new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false, fog: false });
@@ -99,11 +133,36 @@ export function makeDecorSprite(item: DecorItem): THREE.Sprite {
   sprite.position.copy(ground);
   sprite.renderOrder = 100 + item.x + f + item.y + f; // cùng thứ tự họa sĩ với công trình
   sprite.visible = false;
+
+  const jitter = 0.92 + 0.16 * hash(item.x, item.y, 5); // ±8% kích thước
+  const flip = spec.flip && hash(item.x, item.y, 4) < 0.5 ? -1 : 1;
+  const sheet = sheets.get(item.kind);
+
+  if (sheet) {
+    const v = sheet.variants[Math.floor(hash(item.x, item.y, 3) * sheet.variants.length) % sheet.variants.length];
+    const aspect = v.hPx / v.wPx;
+    // Giữ tỉ lệ to/nhỏ giữa các biến thể: vật lớn nhất trong sheet = spec.size.
+    const w = (spec.byWidth ? (spec.size * v.wPx) / sheet.maxWPx : (spec.size * v.hPx) / sheet.maxHPx / aspect) * jitter;
+    sprite.scale.set(w * flip, w * aspect, 1);
+    sprite.center.set(v.ax, v.ay);
+    loadSpriteTexture(sheet.image, (base) => {
+      const tex = base.clone(); // dùng chung ảnh, chỉ khác vùng cắt
+      tex.userData.sheetClone = true;
+      tex.offset.set(v.x / sheet.width, 1 - (v.y + v.hPx) / sheet.height);
+      tex.repeat.set(v.wPx / sheet.width, v.hPx / sheet.height);
+      tex.needsUpdate = true;
+      mat.map = tex;
+      mat.needsUpdate = true;
+      sprite.visible = true;
+    });
+    return sprite;
+  }
+
   mat.map = loadSpriteTexture(spec.url, (tex) => {
     const img = tex.image as { width: number; height: number };
     const aspect = img.height / img.width;
-    const w = spec.byWidth ? spec.size : spec.size / aspect;
-    sprite.scale.set(w, w * aspect, 1);
+    const w = (spec.byWidth ? spec.size : spec.size / aspect) * jitter;
+    sprite.scale.set(w * flip, w * aspect, 1);
     sprite.center.set(0.5, spec.anchorY);
     mat.needsUpdate = true;
     sprite.visible = true;

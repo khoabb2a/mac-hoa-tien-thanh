@@ -6,7 +6,7 @@ import type { ActionFail, World } from '../sim/world';
 import { buildBlockout } from './blockout/buildings';
 import { PALETTE } from './palette';
 import { fitSpriteToBlockout, loadSpriteTexture, SPRITE_URL } from './sprites';
-import { decorFor, makeBackdrop, makeDecorSprite } from './terrainArt';
+import { decorFor, loadDecorSheets, makeBackdrop, makeDecorSprite } from './terrainArt';
 import { LAYER, terrainMaterial } from './terrainMaterial';
 
 /** Góc nhìn isometric 2:1 (GDD 3.3): phương vị 45°, nghiêng 30° ⇒ ô vuông thành hình thoi 2:1. */
@@ -101,6 +101,7 @@ export class IsoScene {
     this.sync();
 
     world.subscribe(() => this.sync());
+    void loadDecorSheets().then((any) => any && this.rebuildDecor());
     this.bindInput(canvas);
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -292,6 +293,7 @@ export class IsoScene {
   private rebuildDecor(): void {
     for (const s of this.decor) {
       this.scene.remove(s);
+      if (s.material.map?.userData.sheetClone) s.material.map.dispose(); // chỉ bản cắt riêng; ảnh gốc dùng chung vẫn trong cache
       s.material.dispose();
     }
     this.decor = decorFor(this.world.grid).map((item) => makeDecorSprite(item));

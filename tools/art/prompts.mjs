@@ -99,3 +99,42 @@ ${tail}
 }
 fs.writeFileSync(path.join(DIR, 'TERRAIN_PROMPTS.md'), tmd);
 console.log('Đã ghi tools/art/TERRAIN_PROMPTS.md');
+
+// ---------- sprite sheet 3×3: SHEET_PROMPTS.md ----------
+const sheetStyle = styleOf('sheet');
+let smd = `# Prompt sprite sheet 3×3 — Mặc Họa Tiên Thành
+
+Sinh tự động từ \`terrain.json\` (trường \`variants\`) + \`style-terrain.md\` (\`npm run art:prompts\`). Đừng sửa trực tiếp.
+
+Mỗi sheet cho 9 biến thể của một loại cây/đá. Game bốc ngẫu nhiên một biến thể cho mỗi ô và lật trái/phải, nên cảnh không lặp lại.
+
+## Cách dùng
+1. Đính kèm đúng ảnh khung ghi dưới mỗi mục (\`art/blockout/sheet_guide_*.png\`), dán prompt, khung 1:1.
+2. Kiểm tra: đủ 9 vật, mỗi vật nằm gọn trong ô của nó, không vẽ khung. Hàng trên to, hàng dưới nhỏ.
+3. Gửi ảnh cho Claude kèm tên (vd. \`tung\`). Claude cắt bằng \`python tools/art/sheet.py art/source/tung_sheet_v1.png tung\`.
+
+`;
+for (const [key, a] of Object.entries(terrain)) {
+  if (!a.variants) continue;
+  const list = a.variants.map((v, i) => `${i + 1}. ${v}`).join('\n');
+  smd += `## ${key} — ${a.use}
+
+Đính kèm: \`art/blockout/${a.sheetGuide}\` (Image 1) · Tỉ lệ 1:1
+
+\`\`\`text
+${sheetStyle}
+
+## Subject
+${a.sheetSubject ?? a.subject}
+
+The nine cells, left to right, top to bottom:
+${list}
+
+Image 1 is the LAYOUT GUIDE only — do not draw it.
+Output a square 1:1 image.
+\`\`\`
+
+`;
+}
+fs.writeFileSync(path.join(DIR, 'SHEET_PROMPTS.md'), smd);
+console.log('Đã ghi tools/art/SHEET_PROMPTS.md');

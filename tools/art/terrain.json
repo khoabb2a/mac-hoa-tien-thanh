@@ -11,14 +11,40 @@
     "priority": 1,
     "guide": "guide_2x2_h12.png",
     "use": "Vách đá trên ô Đá (rìa sau bản đồ), 2×2 ô",
-    "subject": "A rugged rocky outcrop / small cliff for the edge of a mountain sect: several stacked angular boulders with cracked faces, dry-brush texture strokes (cun fa) on the rock, a twisted small pine clinging to one side, some moss in muted jade green at the base. Its footprint fills the 2×2 diamond and it rises to about the height of the dashed box."
+    "subject": "A rugged rocky outcrop / small cliff for the edge of a mountain sect: several stacked angular boulders with cracked faces, dry-brush texture strokes (cun fa) on the rock, a twisted small pine clinging to one side, some moss in muted jade green at the base. Its footprint fills the 2×2 diamond and it rises to about the height of the dashed box.",
+    "sheetGuide": "sheet_guide_2x2_h12.png",
+    "variants": [
+      "tall stacked cliff of angular boulders with a clinging pine",
+      "wide low rocky ledge with moss",
+      "cliff with a thin trickle of waterfall down one face",
+      "pile of three big boulders with ferns",
+      "jagged rock spire with cracked faces",
+      "cliff with a small dark cave opening",
+      "mossy rounded boulders with a shrub",
+      "broken scree of medium rocks",
+      "low flat rock shelf with grass on top"
+    ],
+    "sheetSubject": "Rocky outcrops for the edge of a mountain sect: angular stacked boulders with cracked faces, dry-brush texture strokes (cun fa), moss in muted jade green. Each one covers its cell's 2×2 diamond footprint."
   },
   "tung": {
     "kind": "object",
     "priority": 1,
     "guide": "guide_1x1_h20.png",
     "use": "Cây tùng trang trí trên ô cỏ trống, 1×1 ô",
-    "subject": "A single ancient pine tree (cổ tùng): gnarled, twisting trunk with flaking bark drawn in dry brush, layered flat clusters of needles in dark ink with muted jade-green wash, slightly leaning, elegant scholar-painting silhouette. Trunk base sits in the center of the diamond; the crown reaches about the top of the dashed box."
+    "subject": "A single ancient pine tree (cổ tùng): gnarled, twisting trunk with flaking bark drawn in dry brush, layered flat clusters of needles in dark ink with muted jade-green wash, slightly leaning, elegant scholar-painting silhouette. Trunk base sits in the center of the diamond; the crown reaches about the top of the dashed box.",
+    "sheetGuide": "sheet_guide_1x1_h20.png",
+    "variants": [
+      "ancient pine leaning strongly to the left, long horizontal top branch",
+      "tall upright pine with a split twin trunk and layered crown",
+      "windswept pine bent to the right, crown swept sideways",
+      "mature pine with a round dense crown",
+      "pine with a sparse crown of three needle clusters and peeling bark",
+      "pine growing out of a small rock at its base",
+      "young pine sapling, slim straight trunk",
+      "low bushy pine shrub, wider than tall",
+      "old broken pine stump with a few new needle shoots"
+    ],
+    "sheetSubject": "Ancient pine trees (cổ tùng): gnarled trunks with flaking bark in dry brush, layered flat needle clusters in dark ink with muted jade-green wash, elegant scholar-painting silhouettes. Each trunk base sits on the center of its cell's diamond."
   },
   "duong_da": {
     "kind": "texture",
@@ -43,27 +69,79 @@
     "priority": 2,
     "guide": "guide_1x1_h20.png",
     "use": "Cụm trúc trang trí, 1×1 ô",
-    "subject": "A small clump of five or six bamboo stalks with jointed stems in ink and slender leaves drawn as quick 'ge' character strokes, leaves in dark ink with muted jade-green wash, gently leaning as if in a breeze. Rooted in the center of the diamond, reaching about the top of the dashed box."
+    "subject": "A small clump of five or six bamboo stalks with jointed stems in ink and slender leaves drawn as quick 'ge' character strokes, leaves in dark ink with muted jade-green wash, gently leaning as if in a breeze. Rooted in the center of the diamond, reaching about the top of the dashed box.",
+    "sheetGuide": "sheet_guide_1x1_h20.png",
+    "variants": [
+      "dense clump of seven tall bamboo stalks, full foliage",
+      "three very tall slender stalks, sparse leaves near the top",
+      "clump leaning to the left as if in strong wind",
+      "medium clump of four stalks with young bamboo shoots at the base",
+      "two crossing stalks with drooping leaves",
+      "medium clump with a short woven bamboo fence segment at its foot",
+      "small cluster of young stalks, mostly leaves",
+      "a single young stalk with a few leaves",
+      "low bamboo bush, short stems, round leafy shape"
+    ],
+    "sheetSubject": "Bamboo (trúc): jointed stalks in ink, slender leaves drawn as quick brush strokes, dark ink with muted jade-green wash. Each clump is rooted on the center of its cell's diamond."
   },
   "dao": {
     "kind": "object",
     "priority": 2,
     "guide": "guide_1x1_h20.png",
     "use": "Cây đào hoa trang trí (xuân), 1×1 ô",
-    "subject": "A small peach blossom tree: dark angular ink branches, clusters of pale pink blossoms dotted in light wash (the only pink in the image, kept soft and muted), a few petals falling. Rooted in the center of the diamond, crown reaching about the top of the dashed box."
+    "subject": "A small peach blossom tree: dark angular ink branches, clusters of pale pink blossoms dotted in light wash (the only pink in the image, kept soft and muted), a few petals falling. Rooted in the center of the diamond, crown reaching about the top of the dashed box.",
+    "sheetGuide": "sheet_guide_1x1_h20.png",
+    "variants": [
+      "large peach tree in full bloom, wide crown of pale pink blossoms",
+      "large peach tree with fewer blossoms and fresh green leaves",
+      "old twisted trunk with a few blossoming branches",
+      "medium young peach tree, upright, light blossoms",
+      "medium tree with petals falling around it",
+      "medium tree leaning to the right, blossoms on one side",
+      "small peach sapling with a handful of blossoms",
+      "small flowering bush",
+      "low gnarled stump with one blossoming twig"
+    ],
+    "sheetSubject": "Peach blossom trees (đào): dark angular ink branches, clusters of pale pink blossoms in light wash, kept soft and muted. Each trunk base sits on the center of its cell's diamond."
   },
   "ky_thach": {
     "kind": "object",
     "priority": 2,
     "guide": "guide_1x1_h06.png",
     "use": "Đá cảnh (kỳ thạch), 1×1 ô",
-    "subject": "A single scholar's rock (Taihu stone): pale grey porous limestone with holes and hollows, outlined in confident ink with dry-brush texture, a tuft of grass at its foot. It sits on the diamond and stays within the low dashed box."
+    "subject": "A single scholar's rock (Taihu stone): pale grey porous limestone with holes and hollows, outlined in confident ink with dry-brush texture, a tuft of grass at its foot. It sits on the diamond and stays within the low dashed box.",
+    "sheetGuide": "sheet_guide_1x1_h06.png",
+    "variants": [
+      "tall vertical Taihu scholar rock with many holes",
+      "wide low porous rock lying on its side",
+      "two scholar rocks of different heights side by side",
+      "medium rock with a clump of grass and moss",
+      "pointed upright stone like a small peak",
+      "flat stepping stone with moss in its cracks",
+      "group of three small pebbles and one medium stone",
+      "small round mossy boulder",
+      "tiny pair of pebbles with a grass tuft"
+    ],
+    "sheetSubject": "Scholar's rocks (kỳ thạch, Taihu stone) and garden stones: pale grey porous limestone with holes and hollows, confident ink outline, dry-brush texture. Each sits on its cell's diamond, inside the low dashed box."
   },
   "lau_say": {
     "kind": "object",
     "priority": 2,
     "guide": "guide_1x1_h06.png",
     "use": "Cụm lau sậy ven nước, 1×1 ô",
-    "subject": "A clump of reeds and tall grass at a stream bank: slender blades in quick ink strokes, a few feathery seed heads, muted jade green and ochre washes. Rooted on the diamond, within the low dashed box."
+    "subject": "A clump of reeds and tall grass at a stream bank: slender blades in quick ink strokes, a few feathery seed heads, muted jade green and ochre washes. Rooted on the diamond, within the low dashed box.",
+    "sheetGuide": "sheet_guide_1x1_h06.png",
+    "variants": [
+      "tall dense reed clump with feathery seed heads",
+      "wide fan-shaped grass clump bending in the wind",
+      "reeds with seed heads drooping to the left",
+      "cattails (bulrush) with brown spikes",
+      "medium reeds beside a small stone",
+      "sparse reeds, five thin stems",
+      "short sedge tuft",
+      "small grass clump with tiny pale flowers",
+      "a few young reed shoots"
+    ],
+    "sheetSubject": "Reeds and tall grass at a stream bank: slender blades in quick ink strokes, feathery seed heads, muted jade green and ochre washes. Each clump is rooted on its cell's diamond, inside the low dashed box."
   }
 }
