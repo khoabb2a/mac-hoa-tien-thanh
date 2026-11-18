@@ -29,7 +29,7 @@ Hướng dẫn cho Claude Code khi làm việc trong repo này. GDD đầy đủ
 - Mặt ô địa hình: `render/terrainMaterial.ts` lấy mẫu texture theo tọa độ thế giới (liền mạch giữa các ô), chọn lớp bằng `aLayer`.
 - Sprite (công trình, cây, đá) vẽ theo thứ tự họa sĩ: `depthTest: false`, `renderOrder = 100 + x + w + y + h`.
 - three.js luôn vẽ vật trong suốt SAU vật đục, `renderOrder` không đưa được sprite ra sau mặt ô: muốn nằm sau thì lùi sâu theo hướng nhìn và bật `depthTest` (xem phông núi `makeBackdrop`).
-- Nhà phàm trần (`render/houses.ts`): có `public/sprites/houses/<vùng>.json` thì dùng sprite (hàng = cấp), chưa có thì khối thô.
+- Nhà phàm trần (`render/houses.ts`): có `public/sprites/houses/<vùng>.json` thì dùng sprite (hàng = cấp), chưa có thì khối thô. Bề ngang theo nhà rộng nhất trong sheet (= bề ngang ô); đáy ảnh neo về góc trước ô theo độ phủ.
 - Vật trang trí (`render/terrainArt.ts`) chỉ để nhìn, không phải luật chơi: vị trí, biến thể, lật và co giãn đều suy ra từ ô bằng hàm băm cố định.
 - Biến thể: `public/sprites/decor/<loai>.json` (sinh bởi `tools/art/sheet.py`) — kích thước theo pixel gốc, vật lớn nhất trong sheet = `size` của loại đó.
 

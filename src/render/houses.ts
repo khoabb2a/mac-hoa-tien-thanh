@@ -16,11 +16,12 @@ interface HouseSheet {
   width: number;
   height: number;
   maxHPx: number;
+  maxWPx: number;
   variants: Array<{ cell: number; x: number; y: number; wPx: number; hPx: number; ax: number; ay: number }>;
 }
 
-/** Chiều cao (không gian camera) của nhà lớn nhất trong sheet. */
-const SHEET_SIZE: Record<ZoneType, number> = { cu: 1.55, thi: 1.6, dien: 1.1 };
+/** Bề ngang (không gian camera) của nhà rộng nhất trong sheet ≈ bề ngang hình thoi một ô (√2 ≈ 1.41). */
+const TILE_SCREEN_W = 1.36;
 
 const sheets = new Map<ZoneType, HouseSheet>();
 
@@ -180,11 +181,14 @@ export class HouseLayer {
     const mat = new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false, fog: false });
     const sp = new THREE.Sprite(mat);
     const aspect = v.hPx / v.wPx;
-    const h = (SHEET_SIZE[zone] * v.hPx) / sheet.maxHPx;
+    // Nhà rộng nhất phủ kín bề ngang ô; nhà nhỏ (cấp 1) nhỏ theo đúng tỉ lệ trong sheet.
+    const k = v.wPx / sheet.maxWPx;
+    const w = TILE_SCREEN_W * k;
     const flip = hash(x, y, 14) < 0.5 ? -1 : 1;
-    sp.scale.set((h / aspect) * flip, h, 1);
+    sp.scale.set(w * flip, w * aspect, 1);
     sp.center.set(v.ax, v.ay);
-    sp.position.set(x + 0.5, 0, y + 0.5);
+    // Đáy ảnh = góc trước của nền nhà: nhà phủ kín ô thì neo ở góc trước ô, nhà nhỏ lùi dần về tâm ô.
+    sp.position.set(x + 0.5 + 0.5 * k, 0, y + 0.5 + 0.5 * k);
     sp.renderOrder = 100 + x + 1 + y + 1;
     sp.visible = false;
     loadSpriteTexture(sheet.image, (base) => {

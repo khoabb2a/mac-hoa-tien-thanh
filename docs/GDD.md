@@ -50,7 +50,7 @@ Tam Tài Khí (≈ RCI) · Thiên Nhãn (overlay mực loang) · bong bóng ch�
 - [x] Mô phỏng chạy trong Web Worker, bản sao trên luồng chính; bản lưu v2 (đọc được v1)
 
 ## Việc tiếp theo trong code
-- [ ] Họa bản nhà phàm trần (prompt sẵn trong tools/art/SHEET_PROMPTS.md, mục nha_cu / nha_thi / nha_dien)
+- [x] Họa bản nhà phàm trần: 3 sheet (Cư, Thị, Điền) × 3 cấp × 3 biến thể
 - [ ] Cân bằng số liệu Tam Tài Khí sau khi chơi thử
 - [x] Họa bản AI cho địa hình: phông núi, vách đá, tùng/trúc/đào, kỳ thạch, lau sậy, texture đất/đường/nước
 - [ ] Chuyển `World` vào Web Worker
