@@ -2,7 +2,9 @@
 
 Chạy:  python tools/art/cutout.py art/source/chinhDien_v1.png chinhDien            # vật thể: tách nền, ≤768 px
        python tools/art/cutout.py art/source/mat_nuoc_v1.png mat_nuoc --texture   # texture ô: giữ nguyên, 256×256
-       python tools/art/cutout.py art/source/nui_xa_v1.png nui_xa --backdrop      # phông núi: tách nền, ≤1536 px
+       python tools/art/cutout.py art/source/nui_xa_v1.png nui_xa --backdrop      # phông núi: trắng→trong suốt mềm
+       python tools/art/cutout.py art/source/tung_v1.png tung --small             # cây/đá trang trí: ≤512 px
+       thêm --holes để làm trong suốt cả lỗ trắng kín bên trong (vd. kỳ thạch)
 Ra:    public/sprites/<ten>.webp
 
 Cách làm: điểm gần-trắng nối liền với mép ảnh là nền (giữ lại vùng trắng bên trong công trình);
@@ -19,7 +21,23 @@ MAX_SIDE = 768
 PAD = 6
 
 
-def texture(src: str, name: str, size: int = 256) -> str:
+def backdrop(src: str, name: str, max_side: int = 1536) -> str:
+    """Phông núi: "color to alpha" — trắng thành trong suốt, sương nhạt thành bán trong suốt,
+    giống in mực lên giấy (nhân màu). Không cắt cứng nên chân núi tan vào nền bản đồ."""
+    rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
+    a = (255 - rgb.min(axis=2)) / 255.0
+    a = np.clip((a - 0.03) / 0.97, 0, 1)  # trắng gần tinh khiết → 0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        col = np.where(a[..., None] > 0.01, 255 - (255 - rgb) / np.maximum(a[..., None], 0.01), 255)
+    out = np.dstack([np.clip(col, 0, 255), a * 255]).astype(np.uint8)
+    img = Image.fromarray(out, "RGBA")
+    scale = max_side / max(img.size)
+    if scale < 1:
+        img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
+    return _save(img, name)
+
+
+def texture(src: str, name: str, size: int = 512) -> str:
     """Texture ô liền mạch: không tách nền, chỉ thu nhỏ (mặt ô trên màn hình chỉ vài chục pixel)."""
     img = Image.open(src).convert("RGB").resize((size, size), Image.LANCZOS)
     return _save(img, name)
@@ -33,7 +51,7 @@ def _save(img: Image.Image, name: str) -> str:
     return f"{dst}  {img.size[0]}x{img.size[1]}  {os.path.getsize(dst) // 1024} KB"
 
 
-def cutout(src: str, name: str, max_side: int = MAX_SIDE) -> str:
+def cutout(src: str, name: str, max_side: int = MAX_SIDE, holes: bool = False) -> str:
     rgb = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
     mn = rgb.min(axis=2)
     spread = rgb.max(axis=2) - mn
@@ -42,6 +60,9 @@ def cutout(src: str, name: str, max_side: int = MAX_SIDE) -> str:
     labels, _ = ndimage.label(near_white)
     border = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
     bg = np.isin(labels, border[border > 0])
+    if holes:  # lỗ trắng kín bên trong (vd. đá Thái Hồ) cũng là nền nếu đủ lớn
+        sizes = ndimage.sum(near_white, labels, index=np.arange(labels.max() + 1))
+        bg |= np.isin(labels, np.nonzero(sizes > 300)[0][1:])
 
     alpha = np.ones(mn.shape, np.float32)
     alpha[bg] = 0
@@ -70,6 +91,7 @@ if __name__ == "__main__":
     if "--texture" in sys.argv:
         print(texture(src, name))
     elif "--backdrop" in sys.argv:
-        print(cutout(src, name, max_side=1536))
+        print(backdrop(src, name))
     else:
-        print(cutout(src, name))
+        side = 512 if "--small" in sys.argv else MAX_SIDE
+        print(cutout(src, name, max_side=side, holes="--holes" in sys.argv))

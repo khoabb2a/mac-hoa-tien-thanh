@@ -23,6 +23,10 @@ Hướng dẫn cho Claude Code khi làm việc trong repo này. GDD đầy đủ
 - Phong cách: thủy mặc, bảng màu trong `src/render/palette.ts`, quy tắc 90/8/2 (giấy+mực / thanh lục / chu sa).
 - Toàn bộ hình ảnh do AI vẽ (GDD 3.4). Khối thô trong `src/render/blockout/` là đầu vào cho pipeline AI (ControlNet nét + độ sâu), nên giữ chúng dựng bằng code, có tham số.
 - Shader tự viết phải kết thúc bằng `#include <colorspace_fragment>`; màu theo ô dùng thuộc tính `aTint` (không dùng `instanceColor` với ShaderMaterial).
+- Mặt ô địa hình: `render/terrainMaterial.ts` lấy mẫu texture theo tọa độ thế giới (liền mạch giữa các ô), chọn lớp bằng `aLayer`.
+- Sprite (công trình, cây, đá) vẽ theo thứ tự họa sĩ: `depthTest: false`, `renderOrder = 100 + x + w + y + h`.
+- three.js luôn vẽ vật trong suốt SAU vật đục, `renderOrder` không đưa được sprite ra sau mặt ô: muốn nằm sau thì lùi sâu theo hướng nhìn và bật `depthTest` (xem phông núi `makeBackdrop`).
+- Vật trang trí (`render/terrainArt.ts`) chỉ để nhìn, không phải luật chơi: vị trí suy ra từ lưới bằng hàm băm cố định.
 
 ## Lệnh
 - `npm run dev` · `npm test` · `npm run typecheck` · `npm run build`

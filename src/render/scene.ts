@@ -4,9 +4,10 @@ import { POWERED_THRESHOLD } from '../sim/linhKhi';
 import { lPath } from '../sim/path';
 import type { ActionFail, World } from '../sim/world';
 import { buildBlockout } from './blockout/buildings';
-import { inkMaterial, withInkEdges } from './inkMaterial';
 import { PALETTE } from './palette';
 import { fitSpriteToBlockout, loadSpriteTexture, SPRITE_URL } from './sprites';
+import { decorFor, makeBackdrop, makeDecorSprite } from './terrainArt';
+import { LAYER, terrainMaterial } from './terrainMaterial';
 
 /** Góc nhìn isometric 2:1 (GDD 3.3): phương vị 45°, nghiêng 30° ⇒ ô vuông thành hình thoi 2:1. */
 const AZIMUTH = Math.PI / 4;
@@ -53,6 +54,9 @@ export class IsoScene {
   private world: World;
   private tiles!: THREE.InstancedMesh;
   private tint!: THREE.InstancedBufferAttribute;
+  private layer!: THREE.InstancedBufferAttribute;
+  private terrainMat!: THREE.ShaderMaterial;
+  private decor: THREE.Sprite[] = [];
   private buildingGroups = new Map<number, THREE.Group>();
   private bubbles = new Map<number, THREE.Sprite>();
   private spinners = new Map<number, THREE.Object3D[]>();
@@ -92,7 +96,7 @@ export class IsoScene {
     this.scene.fog = new THREE.Fog(PALETTE.paper, 62, 105); // xa nhạt, gần đậm (camera cách tâm 60)
 
     this.buildTerrain();
-    this.buildMountains();
+    this.scene.add(makeBackdrop(world.grid, viewDirection()));
     this.buildMarks();
     this.sync();
 
@@ -257,6 +261,7 @@ export class IsoScene {
       for (const id of [...this.buildingGroups.keys()]) if (!alive.has(id)) this.removeBuilding(id);
       for (const b of this.world.grid.buildings) if (!this.buildingGroups.has(b.id)) this.addBuilding(b);
       this.layoutTiles();
+      this.rebuildDecor();
       if (this.tool.kind !== 'none') this.updateToolPreview();
     }
     this.paintTiles();
@@ -271,11 +276,26 @@ export class IsoScene {
 
   private buildTerrain(): void {
     const g = this.world.grid;
-    const geo = new THREE.BoxGeometry(0.98, 0.12, 0.98);
-    this.tint = new THREE.InstancedBufferAttribute(new Float32Array(g.width * g.height * 3).fill(1), 3);
+    const n = g.width * g.height;
+    const geo = new THREE.BoxGeometry(1, 0.12, 1); // không chừa khe: texture họa bản liền mạch giữa các ô
+    this.tint = new THREE.InstancedBufferAttribute(new Float32Array(n * 3).fill(1), 3);
+    this.layer = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
     geo.setAttribute('aTint', this.tint);
-    this.tiles = new THREE.InstancedMesh(geo, inkMaterial('#FFFFFF', '#C9C0AC', true), g.width * g.height);
+    geo.setAttribute('aLayer', this.layer);
+    this.terrainMat = terrainMaterial();
+    this.tiles = new THREE.InstancedMesh(geo, this.terrainMat, n);
+    this.tiles.frustumCulled = false;
     this.scene.add(this.tiles);
+  }
+
+  /** Dựng lại cây, đá, vách theo lưới hiện tại (ô vừa làm đường/xây thì vật trang trí biến mất). */
+  private rebuildDecor(): void {
+    for (const s of this.decor) {
+      this.scene.remove(s);
+      s.material.dispose();
+    }
+    this.decor = decorFor(this.world.grid).map((item) => makeDecorSprite(item));
+    for (const s of this.decor) this.scene.add(s);
   }
 
   private layoutTiles(): void {
@@ -292,27 +312,44 @@ export class IsoScene {
     this.tiles.instanceMatrix.needsUpdate = true;
   }
 
-  /** Màu từng ô; khi bật Thiên Nhãn, linh lộ chuyển sang sắc thạch thanh theo lượng linh khí. */
+  /**
+   * Chọn texture (lớp) và màu nhân cho từng ô. Màu nhân trắng = giữ nguyên họa bản.
+   * Thiên Nhãn: đất mờ đi, linh lộ ngả sắc thạch thanh theo lượng linh khí, mắt linh mạch ánh vàng.
+   */
   private paintTiles(): void {
     const g = this.world.grid;
     const lk = this.world.linhKhi.road;
     const c = new THREE.Color();
-    const paper = new THREE.Color(PALETTE.paperDeep);
-    const qi = new THREE.Color(PALETTE.thachThanh);
-    const greenish = new THREE.Color(PALETTE.thanhLuc);
-    const dim = new THREE.Color('#D9D4C8');
+    const white = new THREE.Color(1, 1, 1);
+    const qi = new THREE.Color('#6E9DBF');
+    const dim = new THREE.Color('#BDB8AE');
+    const rock = new THREE.Color('#C4BFB5');
+    const water = new THREE.Color('#C8DAE0');
+    const bridge = new THREE.Color('#D9C3A0');
+    const vein = new THREE.Color(PALETTE.dangHoang);
     for (let i = 0; i < g.width * g.height; i++) {
+      let layer: number = LAYER.ground;
       if (g.road[i]) {
-        if (this.overlay) c.copy(paper).lerp(qi, Math.min(lk[i] / 250, 1));
-        else c.set(g.terrain[i] === Terrain.Water ? '#C9BBA0' : '#D6CCB6'); // trên nước = cầu gỗ
-      } else if (g.terrain[i] === Terrain.Water) c.set(PALETTE.water);
-      else if (g.terrain[i] === Terrain.Rock) c.set(PALETTE.inkThanh);
-      else if (this.overlay && g.vein[i]) c.set(PALETTE.dangHoang);
-      else c.set(PALETTE.paper).lerp(greenish, ((i * 37) % 11) / 60);
-      if (this.overlay && !g.road[i] && g.terrain[i] === Terrain.Grass && !g.vein[i]) c.lerp(dim, 0.6);
+        layer = LAYER.road;
+        if (this.overlay) c.copy(white).lerp(qi, Math.min(lk[i] / 200, 1));
+        else if (g.terrain[i] === Terrain.Water) c.copy(bridge); // linh lộ trên nước = cầu gỗ
+        else c.copy(white);
+      } else if (g.terrain[i] === Terrain.Water) {
+        layer = LAYER.water;
+        c.copy(water);
+      } else if (g.terrain[i] === Terrain.Rock) {
+        c.copy(rock);
+      } else if (this.overlay && g.vein[i]) {
+        c.copy(vein);
+      } else {
+        c.copy(white).multiplyScalar(0.97 + 0.03 * (((i * 37) % 11) / 10));
+        if (this.overlay) c.lerp(dim, 0.7);
+      }
       this.tint.setXYZ(i, c.r, c.g, c.b);
+      this.layer.setX(i, layer);
     }
     this.tint.needsUpdate = true;
+    this.layer.needsUpdate = true;
   }
 
   private buildMarks(): void {
@@ -338,25 +375,6 @@ export class IsoScene {
     this.marks.count = n;
     this.marks.instanceMatrix.needsUpdate = true;
     if (this.marks.instanceColor) this.marks.instanceColor.needsUpdate = true;
-  }
-
-  private buildMountains(): void {
-    const near = inkMaterial(PALETTE.inkDam, PALETTE.inkTrong);
-    const far = inkMaterial(PALETTE.inkThanh, PALETTE.inkDam);
-    const g = this.world.grid;
-    for (let x = 0; x < g.width; x += 2) {
-      const h = 1.2 + ((x * 13) % 7) * 0.35;
-      const cone = withInkEdges(new THREE.Mesh(new THREE.ConeGeometry(1.4, h, 5), near), 40);
-      cone.position.set(x + 0.8, h / 2, 0.6 + ((x * 5) % 3) * 0.3);
-      cone.rotation.y = x;
-      this.scene.add(cone);
-    }
-    for (let k = 0; k < 7; k++) {
-      const h = 4 + ((k * 7) % 5);
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(4 + (k % 3), h, 6), far);
-      cone.position.set(-4 + k * 5, h / 2 - 0.5, -6 - (k % 2) * 3);
-      this.scene.add(cone);
-    }
   }
 
   private addBuilding(b: Building): void {
@@ -443,8 +461,9 @@ export class IsoScene {
     this.target.addScaledVector(right, -dxPx * unitsPerPx);
     this.target.addScaledVector(fwd, (dyPx * unitsPerPx) / Math.sin(ELEVATION));
     const g = this.world.grid;
-    this.target.x = THREE.MathUtils.clamp(this.target.x, 0, g.width);
-    this.target.z = THREE.MathUtils.clamp(this.target.z, 0, g.height);
+    // cho lùi quá rìa sau vài ô để ngắm phông núi
+    this.target.x = THREE.MathUtils.clamp(this.target.x, -5, g.width);
+    this.target.z = THREE.MathUtils.clamp(this.target.z, -5, g.height);
     this.placeCamera();
   }
 
@@ -531,6 +550,7 @@ export class IsoScene {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
     this.world.update(dt);
+    this.terrainMat.uniforms.uTime.value += dt;
     for (const list of this.spinners.values()) for (const s of list) s.rotation.z += dt * 0.6;
     this.renderer.render(this.scene, this.camera);
   }

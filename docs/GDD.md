@@ -45,7 +45,7 @@ Tam Tài Khí (≈ RCI) · Thiên Nhãn (overlay mực loang) · bong bóng ch�
 
 ## Việc tiếp theo trong code
 - [ ] Chấm phong thủy (lớp 1) khi cầm công trình
-- [ ] Họa bản AI cho địa hình: núi, nước, cây, đá (thay khối nón)
+- [x] Họa bản AI cho địa hình: phông núi, vách đá, tùng/trúc/đào, kỳ thạch, lau sậy, texture đất/đường/nước
 - [ ] Chuyển `World` vào Web Worker
 - [ ] Vùng phàm trần tự mọc + Tam Tài Khí
 - [ ] Script render khối thô → ảnh nét + độ sâu cho pipeline AI
