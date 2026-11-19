@@ -159,8 +159,34 @@ describe('bản lưu v2', () => {
     w.zone('cu', 2, 6, 9, 6);
     w.passive = true;
     const money = w.linhThach;
+    const residents = w.stats.residents; // vài nhà có thể đã mọc ngay lúc quy hoạch
     passTerms(w, 10);
     expect(w.linhThach).toBe(money);
-    expect(w.stats.residents).toBe(0);
+    expect(w.stats.residents).toBe(residents);
+  });
+});
+
+describe('lô quy hoạch: mọc ngay và lý do', () => {
+  it('quy hoạch khi đang có nhu cầu: vài lô giáp đường dựng nhà ngay', () => {
+    const w = createDemoWorld();
+    expect(w.stats.demand.cu).toBeGreaterThan(0.05);
+    w.zone('cu', 13, 16, 17, 16); // không giáp đường: không mọc
+    w.zone('cu', 12, 13, 17, 13); // hàng sát đường y=12
+    let built = 0;
+    for (let x = 12; x <= 17; x++) if (w.grid.level[w.grid.idx(x, 13)] > 0) built++;
+    expect(built).toBeGreaterThan(0);
+    for (let x = 13; x <= 17; x++) expect(w.grid.level[w.grid.idx(x, 16)]).toBe(0); // không giáp đường
+  });
+
+  it('lotAt cho biết vì sao lô chưa mọc', () => {
+    const w = createDemoWorld();
+    w.zone('cu', 15, 16, 15, 16);
+    expect(w.lotAt(15, 16)?.reason).toBe('noAccess');
+    expect(w.lotAt(0, 23)).toBeNull();
+    w.zone('cu', 15, 13, 15, 13);
+    const lot = w.lotAt(15, 13)!;
+    expect(lot.zone).toBe('cu');
+    expect(['growing', 'full']).toContain(lot.reason);
+    expect(lot.cap).toBeGreaterThanOrEqual(1);
   });
 });

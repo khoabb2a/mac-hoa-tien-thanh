@@ -5,12 +5,14 @@ import { computeLinhKhi, POWERED_THRESHOLD, type LinhKhiResult } from './linhKhi
 import { checkQuest } from './quests';
 import { Rng } from './rng';
 import { TietKhiClock, type SpeedIndex } from './time';
-import { canZone, growTown, TAX, townStats, ZONE_COST, ZONE_ID, type TownStats, type ZoneType } from './zones';
+import { canZone, growTown, levelCap, lotStatus, TAX, townStats, ZONE_COST, ZONE_ID, type LotStatus, type TownStats, type ZoneType } from './zones';
 
 export type ActionFail = 'blocked' | 'funds' | 'nothing';
 export type ActionResult = { ok: true; cost: number } | { ok: false; reason: ActionFail; cost: number };
 
 export const SAVE_VERSION = 2;
+/** Xác suất một lô vừa quy hoạch (giáp đường, đang có nhu cầu) dựng nhà ngay. */
+export const SPROUT_CHANCE = 0.4;
 export interface WorldSave {
   v: number;
   elapsed: number;
@@ -140,14 +142,20 @@ export class World {
     return { ok: true, cost, tiles };
   }
 
-  /** Quy hoạch vùng; đổi loại vùng thì nhà cũ trên ô bị dỡ (cấp về 0). */
+  /**
+   * Quy hoạch vùng; đổi loại vùng thì nhà cũ trên ô bị dỡ (cấp về 0).
+   * Khi đang có nhu cầu, một phần lô giáp đường dựng nhà ngay (SPROUT_CHANCE) để người chơi
+   * thấy tác dụng tức thì thay vì chờ hết tiết khí.
+   */
   zone(type: ZoneType, ax: number, ay: number, bx: number, by: number): ActionResult {
     const r = this.previewZone(type, ax, ay, bx, by);
     if (!r.ok) return r;
+    const wanted = this.stats.demand[type] > 0.05;
     for (const [x, y] of this.zoneTiles(type, ax, ay, bx, by)) {
       const i = this.grid.idx(x, y);
       this.grid.zone[i] = ZONE_ID[type];
       this.grid.level[i] = 0;
+      if (wanted && levelCap(this.grid, this.linhKhi.road, x, y) >= 1 && this.rng.next() < SPROUT_CHANCE) this.grid.level[i] = 1;
     }
     this.linhThach -= r.cost;
     this.changed();
@@ -178,6 +186,11 @@ export class World {
       return { ok: true, cost: 0 };
     }
     return { ok: false, reason: 'nothing', cost: 0 };
+  }
+
+  /** Tình trạng lô quy hoạch ở (x, y), hoặc null nếu không phải lô. */
+  lotAt(x: number, y: number): LotStatus | null {
+    return lotStatus(this.grid, this.linhKhi.road, this.stats.demand, x, y);
   }
 
   // ---------- lưu / khôi phục ----------

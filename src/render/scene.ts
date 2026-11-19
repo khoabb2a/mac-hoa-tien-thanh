@@ -98,6 +98,9 @@ export class IsoScene {
   private act: (a: Action) => ActionResult;
 
   private onSelect: (id: number | null) => void = () => {};
+  private onLot: (tile: [number, number] | null) => void = () => {};
+  private guide: THREE.Group[] = [];
+  private guideClock = 0;
   private onPreview: (p: Preview | null) => void = () => {};
 
   constructor(canvas: HTMLCanvasElement, world: World, act: (a: Action) => ActionResult, opts: SceneOptions) {
@@ -170,9 +173,13 @@ export class IsoScene {
    * "Chỉ cho tôi" (Thiên Đạo Lệnh): lướt camera tới ô (x, y) rồi khoanh vòng chu sa nhấp nháy vài giây.
    * w/h: bề rộng vùng cần khoanh (ô).
    */
-  focusTile(x: number, y: number, w = 2, h = 2): void {
+  focusTile(x: number, y: number, ring = true, w = 2, h = 2): void {
     const to = new THREE.Vector3(x + w / 2, 0, y + h / 2);
     this.glide = { from: this.target.clone(), to, t: 0 };
+    if (!ring) {
+      if (this.focusRing) this.focusRing.visible = false;
+      return;
+    }
     if (!this.focusRing) {
       const m = new THREE.MeshBasicMaterial({ color: PALETTE.chuSa, transparent: true, depthTest: false });
       this.focusRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 48), m);
@@ -684,6 +691,45 @@ export class IsoScene {
     const hits = ray.intersectObjects(targets, true);
     const hit = hits.find((h) => h.object.userData.buildingId !== undefined);
     this.onSelect(hit ? (hit.object.userData.buildingId as number) : null);
+    if (hit) return this.onLot(null);
+    const p = this.groundAt(ndcX, ndcY);
+    const [x, y] = [Math.floor(p.x), Math.floor(p.z)];
+    const g = this.world.grid;
+    this.onLot(g.inBounds(x, y) && g.zone[g.idx(x, y)] ? [x, y] : null);
+  }
+
+  setOnLot(fn: (tile: [number, number] | null) => void): void {
+    this.onLot = fn;
+  }
+
+  /**
+   * Thực hành có dẫn: khoanh các ô cần chạm, đánh số 一 二 bằng triện chu sa.
+   * Ô đã chạm (điểm đầu / góc thứ nhất) mờ đi; null = xóa.
+   */
+  setGuide(tiles: Array<[number, number]> | null): void {
+    for (const o of this.guide) this.scene.remove(o);
+    this.guide = [];
+    if (!tiles) return;
+    const numerals = ['一', '二', '三', '四'];
+    tiles.forEach(([x, y], k) => {
+      const grp = new THREE.Group();
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.36, 0.48, 40),
+        new THREE.MeshBasicMaterial({ color: PALETTE.chuSa, transparent: true, depthTest: false }),
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.06;
+      const seal = new THREE.Sprite(new THREE.SpriteMaterial({ map: sealTexture(numerals[k] ?? '・'), depthTest: false }));
+      seal.scale.set(0.95, 0.95, 1);
+      seal.position.y = 1.05;
+      grp.add(ring, seal);
+      grp.position.set(x + 0.5, 0, y + 0.5);
+      grp.renderOrder = 2001;
+      ring.renderOrder = seal.renderOrder = 2001;
+      grp.userData.tile = [x, y];
+      this.scene.add(grp);
+      this.guide.push(grp);
+    });
   }
 
   private frame(): void {
@@ -698,6 +744,20 @@ export class IsoScene {
       this.target.lerpVectors(this.glide.from, this.glide.to, k);
       this.placeCamera();
       if (this.glide.t >= 1) this.glide = null;
+    }
+    if (this.guide.length) {
+      this.guideClock += dt;
+      // ô đầu tiên đã chạm (đầu đường / góc vùng) thì mờ đi, nhấp nháy ô kế tiếp
+      const [a, b] = this.tool.kind === 'road' ? [this.roadStart, this.roadEnd] : this.tool.kind === 'zone' ? [this.zoneA, this.zoneB] : [null, null];
+      const next = a && b ? -1 : a ? 1 : 0;
+      this.guide.forEach((g, k) => {
+        const active = k === next;
+        g.scale.setScalar(active ? 1 + 0.15 * Math.sin(this.guideClock * 6) : 0.85);
+        g.traverse((o) => {
+          const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+          if (m) m.opacity = active ? 1 : 0.45;
+        });
+      });
     }
     if (this.focusRing?.visible) {
       const u = this.focusRing.userData as { size: number; life: number };

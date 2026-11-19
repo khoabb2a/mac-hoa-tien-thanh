@@ -83,6 +83,40 @@ export function townStats(grid: Grid, sectBuildings: number): TownStats {
   return { residents, thiJobs, dienJobs, zoned, demand: { cu: d(rawCu), thi: d(rawThi), dien: d(rawDien) } };
 }
 
+/** Lý do một lô đang (không) mọc nhà — để người chơi chạm vào lô và hiểu ngay. */
+export type LotReason = 'noAccess' | 'declining' | 'full' | 'noDemand' | 'surplus' | 'growing';
+export interface LotStatus {
+  zone: ZoneType;
+  level: number;
+  cap: number;
+  qi: number;
+  fengShui: number;
+  reason: LotReason;
+}
+
+export function lotStatus(grid: Grid, roadQiMap: Float32Array, demand: Demand, x: number, y: number): LotStatus | null {
+  if (!grid.inBounds(x, y)) return null;
+  const i = grid.idx(x, y);
+  const zone = ZONE_OF[grid.zone[i]];
+  if (!zone) return null;
+  const level = grid.level[i];
+  const { access, qi } = roadQi(grid, roadQiMap, x, y);
+  const cap = levelCap(grid, roadQiMap, x, y);
+  const d = demand[zone];
+  const reason: LotReason = !access
+    ? 'noAccess'
+    : level > cap
+      ? 'declining'
+      : level >= cap
+        ? 'full'
+        : d < -0.35
+          ? 'surplus'
+          : d <= 0.05
+            ? 'noDemand'
+            : 'growing';
+  return { zone, level, cap, qi: Math.round(qi), fengShui: fengShuiAt(grid, x, y).score, reason };
+}
+
 /** Một bước mọc/suy của vùng phàm trần, chạy mỗi tiết khí. Trả về số ô đổi cấp. */
 export function growTown(grid: Grid, roadQiMap: Float32Array, demand: Demand, rng: Rng): number {
   let changed = 0;

@@ -32,28 +32,39 @@ async function boot(): Promise<void> {
   // Tự lưu: sau mỗi thay đổi (gom trong 1,5 giây), mỗi 20 giây, và khi rời app.
   let saveTimer = 0;
   let resetting = false; // khi chơi lại/nhập file: không để tự lưu ghi đè trước lúc tải lại trang
-  const persist = () => {
-    if (!resetting) void saveGame(world.toSave());
+  // Ghi thất bại (bộ nhớ đầy, chế độ riêng tư chặn IndexedDB...): báo một lần mỗi đợt lỗi, ván vẫn chơi tiếp.
+  let saveOk = true;
+  let saveFailed = 0;
+  const persist = async () => {
+    if (resetting) return;
+    const ok = await saveGame(world.toSave());
+    if (!ok && saveOk) {
+      saveFailed++;
+      draw();
+    }
+    saveOk = ok;
   };
   world.subscribe(() => {
     clearTimeout(saveTimer);
-    saveTimer = window.setTimeout(persist, 1500);
+    saveTimer = window.setTimeout(() => void persist(), 1500);
   });
-  setInterval(persist, 20_000);
+  setInterval(() => void persist(), 20_000);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') persist();
+    if (document.visibilityState === 'hidden') void persist();
   });
 
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
   const scene = new IsoScene(canvas, world, (a) => sim.act(a), { low: isLowEnd() });
 
   let selected: number | null = null;
+  let lot: [number, number] | null = null;
   let preview: Preview | null = null;
   const hudRoot = document.getElementById('hud')!;
 
   const actions: HudActions = {
     setTool: (tool) => {
       selected = null;
+      lot = null;
       scene.setTool(tool);
       draw();
     },
@@ -63,18 +74,24 @@ async function boot(): Promise<void> {
     setArt: (on) => scene.setArtMode(on),
     exportSave: () => exportGame(world.toSave()),
     importSave: async (file) => {
+      let data;
       try {
-        const data = await readSaveFile(file);
+        data = await readSaveFile(file);
         World.fromSave(data); // kiểm tra hợp lệ trước khi ghi đè
-        resetting = true;
-        await saveGame(data);
-        location.reload();
-        return true;
       } catch {
-        return false;
+        return 'invalid';
       }
+      resetting = true;
+      if (!(await saveGame(data))) {
+        // không ghi được: giữ nguyên ván đang chơi, không tải lại trang
+        resetting = false;
+        return 'storage';
+      }
+      location.reload();
+      return 'ok';
     },
-    focusTile: (x, y) => scene.focusTile(x, y),
+    focusTile: (x, y, ring) => scene.focusTile(x, y, ring),
+    setGuide: (tiles) => scene.setGuide(tiles),
     newGame: () => {
       resetting = true;
       void clearGame().then(() => location.reload());
@@ -82,11 +99,15 @@ async function boot(): Promise<void> {
   };
 
   function draw(): void {
-    render(<Hud world={world} selected={selected} preview={preview} actions={actions} />, hudRoot);
+    render(<Hud world={world} selected={selected} lot={lot} preview={preview} saveFailed={saveFailed} actions={actions} />, hudRoot);
   }
 
   scene.setOnSelect((id) => {
     selected = id;
+    draw();
+  });
+  scene.setOnLot((tile) => {
+    lot = tile;
     draw();
   });
   scene.setOnPreview((p) => {

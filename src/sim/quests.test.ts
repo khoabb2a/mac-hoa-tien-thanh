@@ -28,6 +28,26 @@ describe('Thiên Đạo Lệnh', () => {
     expect(w.questIndex).toBe(1);
   });
 
+  it('lệnh 1: phá Tĩnh Xá thiếu linh khí thì KHÔNG tính là xong', () => {
+    const w = createDemoWorld();
+    expect(w.demolishAt(3, 17).ok).toBe(true);
+    expect(w.linhKhi.coverage).toBe(1); // độ phủ chung đạt 100% nhưng lệnh vẫn chưa xong
+    expect(w.questIndex).toBe(0);
+    // dựng lại đúng chỗ rồi nối đường thì xong
+    w.build('tinhXa', 3, 17);
+    expect(w.questIndex).toBe(0);
+    w.buildRoad(lPath(3, 13, 3, 16));
+    expect(w.questIndex).toBe(1);
+  });
+
+  it('ô dẫn đường của lệnh 1 và 2 làm được đúng thao tác', () => {
+    const w = createDemoWorld();
+    const [a, b] = QUESTS[0].focus.guide!;
+    expect(w.previewRoad(lPath(a[0], a[1], b[0], b[1])).ok).toBe(true);
+    const [c, d] = QUESTS[idx('zoneCu')].focus.guide!;
+    expect(w.previewZone('cu', c[0], c[1], d[0], d[1])).toMatchObject({ ok: true, tiles: 6 });
+  });
+
   it('mỗi lần xét chỉ xong một lệnh, dù lệnh sau đã đạt sẵn', () => {
     const w = createDemoWorld();
     w.linhThach = 5000; // lệnh "wealth" đạt sẵn nhưng chưa tới lượt
@@ -38,8 +58,11 @@ describe('Thiên Đạo Lệnh', () => {
   it('lệnh 2: quy hoạch 6 ô Phàm Cư', () => {
     const w = createDemoWorld();
     w.questIndex = idx('zoneCu');
-    const [x, y] = QUESTS[idx('zoneCu')].focus.tile!;
-    expect(w.zone('cu', x, y, x + 2, y + 1).ok).toBe(true);
+    const [[ax, ay], [bx, by]] = QUESTS[idx('zoneCu')].focus.guide!;
+    expect(w.zone('cu', ax, ay, bx, by).ok).toBe(true);
+    // mọi lô trong vùng dẫn đều giáp linh lộ (không dạy người chơi khoanh chỗ không bao giờ mọc)
+    for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++)
+      for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) expect(w.lotAt(x, y)?.reason).not.toBe('noAccess');
     expect(w.questIndex).toBe(idx('zoneCu') + 1);
   });
 

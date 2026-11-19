@@ -217,3 +217,15 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .tut-head { display: flex; align-items: center; gap: 8px; }
 .tut-head .tut-step { margin-left: auto; font-size: 12px; color: var(--ink-soft); }
 .tut-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---------- lô quy hoạch, nút "sắp có" ---------- */
+.card.lot { max-width: 72%; bottom: calc(var(--safe-bottom) + 196px); }
+.card.lot .lot-meta { font-size: 12px; color: var(--ink-soft); }
+.card.lot p { margin: 6px 0 0; font-size: 13px; line-height: 1.35; }
+.card.lot p.ok { color: #3f6b55; }
+.bottombar button { position: relative; }
+.bottombar .soon {
+  position: absolute; top: -10px; right: 0; font-size: 12px; line-height: 1; padding: 2px 5px; border-radius: 8px;
+  background: var(--ink-faint); color: var(--paper); font-weight: 700;
+}
+.bottombar button.later > :not(.soon) { opacity: 0.45; }

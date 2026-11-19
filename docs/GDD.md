@@ -54,6 +54,8 @@ Tam Tài Khí (≈ RCI) · Thiên Nhãn (overlay mực loang) · bong bóng ch�
 - [x] Hướng dẫn mở đầu (Trưởng lão Mặc Vân, 8 bước soi từng phần HUD, xem lại trong Tông môn)
 - [x] Thiên Đạo Lệnh: 9 nhiệm vụ nối nhau (`sim/quests.ts`), thưởng linh thạch, nút "Chỉ cho tôi" (camera tới ô + nhấp nháy nút), lưu trong bản lưu
 - [x] Cắt lại nền trắng sót trong kẽ lá (`--holes-min 4`)
+- [x] Sau đánh giá ngoài (commit d5a8708): lệnh 1 theo dõi đúng Tĩnh Xá; thực hành có dẫn (Chỉ cho tôi cầm sẵn công cụ + ô 一 二); quy hoạch lúc có nhu cầu mọc nhà ngay (40%/lô); chạm lô xem lý do chưa mọc; báo lỗi lưu/nhập; nút Đệ tử, Kỳ ngộ ghi Sắp có
+- [ ] Đo hiệu năng trên máy thật và bản đồ 48×48 trước khi mở Tiên Trấn (ảnh chụp từ Worker gửi toàn bộ trạng thái, dựng lại lưới/nhà/vật trang trí sau mỗi thay đổi)
 - [ ] Cân bằng số liệu Tam Tài Khí sau khi chơi thử
 - [x] Họa bản AI cho địa hình: phông núi, vách đá, tùng/trúc/đào, kỳ thạch, lau sậy, texture đất/đường/nước
 - [ ] Script render khối thô → ảnh nét + độ sâu cho pipeline AI

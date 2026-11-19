@@ -17,26 +17,35 @@ export interface HudActions {
   setOverlay: (on: boolean) => void;
   setArt: (on: boolean) => void;
   exportSave: () => void;
-  importSave: (file: File) => Promise<boolean>;
+  /** 'invalid' = file hỏng; 'storage' = không ghi được vào máy (ván hiện tại giữ nguyên). */
+  importSave: (file: File) => Promise<'ok' | 'invalid' | 'storage'>;
   newGame: () => void;
   /** Lướt camera tới ô và khoanh vòng (nút "Chỉ cho tôi"). */
-  focusTile: (x: number, y: number) => void;
+  focusTile: (x: number, y: number, ring?: boolean) => void;
+  /** Khoanh các ô cần chạm khi thực hành có dẫn (null = xóa). */
+  setGuide: (tiles: Array<[number, number]> | null) => void;
 }
 
 interface Props {
   world: World;
   selected: number | null;
+  /** Lô quy hoạch người chơi vừa chạm. */
+  lot: [number, number] | null;
   preview: Preview | null;
+  /** Tăng mỗi khi tự lưu bắt đầu thất bại. */
+  saveFailed: number;
   actions: HudActions;
 }
 
 const NAV = ['build', 'zone', 'disciples', 'encounters', 'sect'] as const;
 type NavKey = (typeof NAV)[number];
+/** Chưa làm: ghi thẳng trên nút để người chơi khỏi bấm thử. */
+const SOON = new Set<NavKey>(['disciples', 'encounters']);
 const NAV_GLYPH: Record<NavKey, string> = { build: '築', zone: '域', disciples: '徒', encounters: '緣', sect: '宗' };
 const ZONE_GLYPH: Record<ZoneType, string> = { cu: '居', thi: '市', dien: '田' };
 
 /** HUD màn dọc một tay (GDD 9.2): thanh trên, chip nổi, thanh xác nhận, bảng cuộn trục, 5 nút dưới. */
-export function Hud({ world, selected, preview, actions }: Props) {
+export function Hud({ world, selected, lot, preview, saveFailed, actions }: Props) {
   const [, force] = useState(0);
   const [overlay, setOverlay] = useState(false);
   const [art, setArt] = useState(true);
@@ -74,16 +83,27 @@ export function Hud({ world, selected, preview, actions }: Props) {
       say(t('quest.completed', { name: t(`quest.${q.id}.title`), n: q.reward }), false, 4200);
       setQuestFlash(true);
       window.setTimeout(() => setQuestFlash(false), 2400);
+      actions.setGuide(null);
     }
     lastQuest.current = world.questIndex;
   });
 
+  const lastSaveFail = useRef(saveFailed);
+  useEffect(() => {
+    if (saveFailed > lastSaveFail.current) say(t('toast.saveFail'), true, 6000);
+    lastSaveFail.current = saveFailed;
+  }, [saveFailed]);
+
   const showMe = (q: QuestDef) => {
     setQuestOpen(false);
-    if (q.focus.ui === 'eye' || q.focus.ui === 'demand') chooseTool({ kind: 'none' });
+    const f = q.focus;
+    // Thực hành có dẫn: cầm sẵn công cụ, khoanh từng ô cần chạm theo thứ tự.
+    if (f.tool) chooseTool(f.tool === 'road' ? { kind: 'road' } : { kind: 'zone', type: f.tool });
+    else if (f.ui === 'eye' || f.ui === 'demand') chooseTool({ kind: 'none' });
     else setPanel('none');
-    if (q.focus.tile) actions.focusTile(q.focus.tile[0], q.focus.tile[1]);
-    if (q.focus.ui) {
+    if (f.guide) actions.setGuide(f.guide);
+    if (f.tile) actions.focusTile(f.tile[0], f.tile[1], !f.guide); // đã có ô đánh số thì khỏi khoanh vòng lớn
+    if (q.focus.ui && !f.tool) {
       setPulse(q.focus.ui);
       clearTimeout(pulseTimer.current);
       pulseTimer.current = window.setTimeout(() => setPulse(null), 5000);
@@ -96,6 +116,7 @@ export function Hud({ world, selected, preview, actions }: Props) {
   };
 
   const chooseTool = (next: Tool) => {
+    if (next.kind === 'none') actions.setGuide(null);
     setToolState(next);
     actions.setTool(next);
     setPanel('none');
@@ -168,6 +189,8 @@ export function Hud({ world, selected, preview, actions }: Props) {
         onShowMe={showMe}
       />
 
+      {!sel && lot && tool.kind === 'none' && panel === 'none' && !questOpen && <LotCard world={world} x={lot[0]} y={lot[1]} />}
+
       {sel && tool.kind === 'none' && panel === 'none' && !questOpen && (
         <div class="card">
           <strong>{t(`building.${sel.type}`)}</strong>
@@ -232,11 +255,12 @@ export function Hud({ world, selected, preview, actions }: Props) {
               (k === 'sect' && panel === 'sect')
                 ? 'on'
                 : ''
-            } ${pulse === k ? 'pulse' : ''}`}
+            } ${pulse === k ? 'pulse' : ''} ${SOON.has(k) ? 'later' : ''}`}
             onClick={() => onNav(k)}
           >
             <span class="glyph">{NAV_GLYPH[k]}</span>
             <span>{t(`nav.${k}`)}</span>
+            {SOON.has(k) && <span class="soon">{t('nav.soonShort')}</span>}
           </button>
         ))}
       </nav>
@@ -410,7 +434,7 @@ function Item(p: { glyph?: string; img?: string; swatch?: ZoneType; name: string
   );
 }
 
-function SectPanel({ actions, onClose, say, onTutorial }: { actions: HudActions; onClose: () => void; say: (s: string, bad?: boolean) => void; onTutorial: () => void }) {
+function SectPanel({ actions, onClose, say, onTutorial }: { actions: HudActions; onClose: () => void; say: (s: string, bad?: boolean, ms?: number) => void; onTutorial: () => void }) {
   const [armed, setArmed] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   return (
@@ -427,7 +451,10 @@ function SectPanel({ actions, onClose, say, onTutorial }: { actions: HudActions;
           hidden
           onChange={async (e) => {
             const f = (e.currentTarget as HTMLInputElement).files?.[0];
-            if (f && !(await actions.importSave(f))) say(t('sect.importFail'), true);
+            if (!f) return;
+            const res = await actions.importSave(f);
+            if (res === 'invalid') say(t('sect.importFail'), true);
+            else if (res === 'storage') say(t('toast.saveFail'), true, 6000);
           }}
         />
         <button class={armed ? 'danger' : ''} onClick={() => (armed ? actions.newGame() : setArmed(true))}>
@@ -466,6 +493,20 @@ function DemandBars({ world, open, pulse, onToggle }: { world: World; open: bool
           );
         })}
       </button>
+    </div>
+  );
+}
+
+/** Thẻ lô quy hoạch: cấp hiện tại, cấp tối đa, và vì sao lô đang (không) mọc nhà. */
+function LotCard({ world, x, y }: { world: World; x: number; y: number }) {
+  const s = world.lotAt(x, y);
+  if (!s) return null;
+  return (
+    <div class="card lot">
+      <strong>{t(`zone.${s.zone}`)}</strong>
+      <div>{t('lot.level', { a: s.level, b: s.cap })}</div>
+      <div class="lot-meta">{t('overlay.linhKhi')}: {s.qi} · {t('fs.label')}: {t(`fs.${s.fengShui}`)}</div>
+      <p class={s.reason === 'growing' || s.reason === 'full' ? 'ok' : 'warn'}>{t(`lot.${s.reason}`)}</p>
     </div>
   );
 }

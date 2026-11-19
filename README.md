@@ -7,14 +7,27 @@
 - GDD: [Claude Docs — GDD Mặc Họa Tiên Thành](https://claude.ai/artifact/C2RKDi6kdrZM2oGEKfad6W) · tóm tắt trong [`docs/GDD.md`](docs/GDD.md)
 - Trạng thái / Status: **prototype lõi** — xây công trình, linh lộ, quy hoạch phàm trần tự mọc nhà (Tam Tài Khí), phong thủy, Thiên Nhãn, lưu game, mô phỏng trong Web Worker, HUD song ngữ, họa bản AI.
 
+![Ảnh chụp trên màn iPhone SE / Screenshot at iPhone SE size](docs/screenshot.jpg)
+
 ## Chạy thử / Run
 
+Đã kiểm tra với **Node.js 22 và 24**. / Tested with **Node.js 22 and 24**.
+
 ```bash
-npm install
-npm run dev        # mở http://localhost:5173 (thêm --host để thử trên điện thoại cùng Wi-Fi)
+npm ci
+npm run dev        # http://localhost:5173 — đã bật sẵn --host, điện thoại cùng Wi-Fi mở được bằng IP máy
 npm test           # test mô phỏng + kiểm tra đủ bản dịch
 npm run build      # kiểm tra kiểu + đóng gói PWA vào dist/
+npm run preview    # chạy thử bản production (có service worker, chơi offline)
 ```
+
+Game chạy bằng tài nguyên có sẵn trong repo; khóa Gemini chỉ cần khi tự sinh thêm ảnh. / The game runs on assets already in the repo; a Gemini key is only needed to generate new art.
+
+## Năm phút đầu / First five minutes
+
+1. Trưởng lão Mặc Vân giới thiệu HUD (xem lại: Tông môn → Xem lại hướng dẫn). / Elder Mo Yun tours the HUD (replay: Sect → Replay the tutorial).
+2. Chạm thẻ **令 Thiên Đạo Lệnh** ở góc trên → **Chỉ cho tôi**: game cầm sẵn công cụ Linh lộ và đánh dấu ô 一, 二. Chạm 一 rồi 二, bấm **Làm đường** — Tĩnh Xá lẻ loi có linh khí, nhận 100 linh thạch. / Tap the **令 decree** card → **Show me**: the Spirit Road tool is picked and tiles 一, 二 are marked. Tap 一, then 二, then **Build road**.
+3. Lệnh kế: quy hoạch Phàm Cư cạnh linh lộ — vài nhà mọc ngay; chạm một lô để xem vì sao nó (chưa) mọc. Bấm **Ngự phong** để tua nhanh. / Next: zone Homes beside a road — a few houses appear at once; tap a lot to see why it is (not) growing. Use **Ride the Wind** to fast-forward.
 
 ## Thao tác / Controls
 
@@ -23,6 +36,9 @@ npm run build      # kiểm tra kiểu + đóng gói PWA vào dist/
 | Kéo một ngón / Drag | Di chuyển bản đồ / Pan |
 | Chụm hai ngón, lăn chuột / Pinch, wheel | Phóng to thu nhỏ / Zoom |
 | Chạm công trình / Tap a building | Xem thẻ thông tin, lượng linh khí |
+| Chạm lô quy hoạch / Tap a zoned lot | Cấp nhà, cấp tối đa, lý do chưa mọc / Level, max level, why it isn't growing |
+| Công trình / Buildings | Kéo bản đồ cho tâm màn hình vào chỗ muốn đặt, bấm Đặt / Drag the map to aim the centre mark, tap Place |
+| Linh lộ, quy hoạch / Roads, zones | Chạm điểm đầu (góc 1) rồi điểm cuối (góc 2), bấm xác nhận / Tap start (corner 1), then end (corner 2), then confirm |
 | Nút Thiên Nhãn / Heavenly Eye | Bật lớp phủ linh khí / Qi overlay |
 | Nút EN / VI | Đổi ngôn ngữ / Switch language |
 
@@ -43,7 +59,7 @@ iPhone SE (2020) và Samsung Galaxy Note 10 trở lên. Máy yếu tự chuyển
 
 ## Giấy phép / License
 
-Chưa công bố — mã nguồn riêng tư. / Not yet licensed — private source.
+Mã nguồn công khai để tham khảo, chưa cấp phép dùng lại: giữ mọi quyền (`UNLICENSED` trong `package.json`). / Source is public for reference only — all rights reserved, no licence granted yet (`UNLICENSED` in `package.json`).
 
 ## Pipeline đồ họa AI / AI art pipeline
 
