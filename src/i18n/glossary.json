@@ -135,6 +135,51 @@
       "vi": "Phong thủy",
       "han": "風水",
       "en": "Feng shui"
+    },
+    {
+      "vi": "Bản đồ vùng",
+      "han": "域圖",
+      "en": "Region Map"
+    },
+    {
+      "vi": "Đạo Đội",
+      "han": "道隊",
+      "en": "Dao Squad"
+    },
+    {
+      "vi": "Hộ pháp",
+      "han": "護法",
+      "en": "Guardian"
+    },
+    {
+      "vi": "Mắt linh mạch",
+      "han": "脈眼",
+      "en": "Vein Node"
+    },
+    {
+      "vi": "Nguồn tiếp tế",
+      "han": "補給源",
+      "en": "Supply Source"
+    },
+    {
+      "vi": "Đạo Minh",
+      "han": "道盟",
+      "en": "Dao Alliance"
+    },
+    {
+      "vi": "Kỳ thiên tượng",
+      "han": "奇天象",
+      "en": "Celestial Anomaly"
+    },
+    {
+      "vi": "Lịch trình",
+      "han": "行程",
+      "en": "Itinerary"
+    },
+    {
+      "vi": "Hành trang",
+      "han": "行囊",
+      "en": "Cargo"
     }
   ]
 }

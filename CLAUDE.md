@@ -2,6 +2,8 @@
 
 Hướng dẫn cho Claude Code khi làm việc trong repo này. GDD đầy đủ: https://claude.ai/artifact/C2RKDi6kdrZM2oGEKfad6W (tóm tắt: `docs/GDD.md`).
 
+Hướng phát triển: chiến thuật bản đồ chung kiểu Rise of Kingdoms, chủ đề tiên hiệp, giữ mỹ thuật thủy mặc hiện tại. Thiết kế bản đồ vùng và các quyết định đã chốt: `docs/THIET-KE-BAN-DO-VUNG.md`; nghĩa thuật ngữ: `GLOSSARY.md`. Skill quy trình (Matt Pocock, MIT) ở `.agents/skills/`, liên kết sang `.claude/skills/`.
+
 ## Nguyên tắc kiến trúc
 - `src/sim/` là logic thuần: **không import Three.js, DOM hay Preact**. Mọi luật chơi nằm ở đây và phải có test (`*.test.ts`, Vitest).
 - Mô phỏng chạy trong **Web Worker** (`platform/simWorker.ts` → `sim/simCore.ts`). Luồng chính giữ bản sao `World` thụ động (`passive = true`) để vẽ và xem trước; mọi hành động đi qua `sim.act(Action)` (`sim/protocol.ts`): áp ngay lên bản sao rồi gửi sang Worker, ảnh chụp từ Worker thay bản sao bằng `applySave`. Không có Worker thì chạy tại chỗ.
