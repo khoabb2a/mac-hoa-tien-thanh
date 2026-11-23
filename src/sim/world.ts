@@ -2,12 +2,14 @@ import { BUILD_COST, BASE_POPULATION, HOUSING, INCOME_BASE, INCOME_PER_POWERED, 
 import { FENG_SHUI_BONUS, fengShuiAt } from './fengShui';
 import { Grid, Terrain, type BuildingType, type GridSave } from './grid';
 import { computeLinhKhi, POWERED_THRESHOLD, type LinhKhiResult } from './linhKhi';
+import { cargoAt, gatheredAt, isOut, newSquad, planTrip, stateAt, type ExpeditionFail, type Squad, type SquadTarget, type TripPlan } from './expedition';
 import { checkQuest } from './quests';
+import { createRegion, type Region, type RegionSave } from './region';
 import { Rng } from './rng';
 import { TietKhiClock, type SpeedIndex } from './time';
 import { canZone, growTown, levelCap, lotStatus, TAX, townStats, ZONE_COST, ZONE_ID, type LotStatus, type TownStats, type ZoneType } from './zones';
 
-export type ActionFail = 'blocked' | 'funds' | 'nothing';
+export type ActionFail = 'blocked' | 'funds' | 'nothing' | ExpeditionFail;
 export type ActionResult = { ok: true; cost: number } | { ok: false; reason: ActionFail; cost: number };
 
 export const SAVE_VERSION = 2;
@@ -23,6 +25,10 @@ export interface WorldSave {
   rng?: number;
   /** Thiên Đạo Lệnh đang làm (chỉ số trong QUESTS); thiếu = 0. */
   questIndex?: number;
+  /** Mốc 1: trữ lượng các điểm khai thác trên bản đồ vùng. Thiếu = bản đồ mặc định. */
+  region?: RegionSave;
+  /** Mốc 1: Đạo Đội và lịch trình. Thiếu = hai đội ở nhà. */
+  squads?: Squad[];
 }
 
 /** Trạng thái thế giới + luật chơi. Logic thuần (GDD 3.3), sau này chạy trong Web Worker. */
@@ -45,6 +51,9 @@ export class World {
    * để HUD mượt, còn mọi thay đổi thật đến từ applySave() theo ảnh chụp của Worker.
    */
   passive = false;
+  /** Bản đồ vùng (mốc 1) và các Đạo Đội. */
+  readonly region: Region = createRegion();
+  squads: Squad[] = [newSquad(1), newSquad(2)];
   /** Tăng mỗi khi lưới thay đổi, để phần vẽ biết cần dựng lại. */
   revision = 0;
   private listeners = new Set<() => void>();
@@ -66,6 +75,80 @@ export class World {
     const changed = this.clock.advance(realSeconds);
     if (this.passive) return;
     for (let i = 0; i < changed; i++) this.onNewTerm();
+    if (this.settleExpeditions(this.clock.elapsed)) {
+      if (this.questsOn) checkQuest(this);
+      this.emit();
+    }
+  }
+
+  // ---------- Đạo Đội (mốc 1) ----------
+
+  /**
+   * Ghi các mốc của lịch trình đã tới: chặng khai thác xong thì trừ trữ lượng mỏ;
+   * đội về tới cổng thì cộng hành trang vào kho — đúng một lần, vì lịch trình được xóa ngay.
+   * Bản sao thụ động không gọi hàm này (Worker là nguồn chuẩn). Trả về true nếu có gì đổi.
+   */
+  private settleExpeditions(now: number): boolean {
+    let any = false;
+    for (const sq of this.squads) {
+      for (const p of sq.plan)
+        if (p.k === 'gather' && !p.applied && now >= p.t1) {
+          const n = this.region.node(p.node);
+          if (n) n.amount = Math.max(0, n.amount - p.amount);
+          p.applied = true;
+          any = true;
+        }
+      if (isOut(sq) && now >= sq.plan[sq.plan.length - 1].t1) {
+        const haul = cargoAt(sq, now);
+        this.linhThach += haul;
+        sq.lastHaul = haul;
+        sq.trips++;
+        sq.cargo = 0;
+        sq.plan = [];
+        sq.target = null;
+        any = true;
+      }
+    }
+    return any;
+  }
+
+  private nodeBusy(node: number, except: number): boolean {
+    return this.squads.some((o) => o.id !== except && o.plan.some((p) => p.k === 'gather' && p.node === node && !p.applied));
+  }
+
+  /** Xem trước lệnh (không đổi gì): đường đi, thời gian, lượng sẽ khai, hoặc lý do không đi được. */
+  previewDispatch(squadId: number, target: SquadTarget): TripPlan | { ok: false; reason: ActionFail } {
+    const sq = this.squads.find((q) => q.id === squadId);
+    if (!sq) return { ok: false, reason: 'nothing' };
+    const now = this.clock.elapsed;
+    if (target.k === 'home' && !isOut(sq)) return { ok: false, reason: 'nothing' };
+    const st = stateAt(sq, this.region, now);
+    if (target.k === 'node' && st.phase?.k === 'gather' && st.phase.node === target.node) return { ok: false, reason: 'nothing' };
+    return planTrip(this.region, sq, st.pos, st.anchor, now, target, st.cargo, (n) => this.nodeBusy(n, sq.id));
+  }
+
+  /**
+   * Cử đội tới mỏ, đổi đích, hoặc gọi về (target home). Đội đang ngoài thì cắt lịch trình
+   * tại hiện tại: phần đã khai dở giữ trong hành trang và trừ vào mỏ ngay.
+   */
+  dispatch(squadId: number, target: SquadTarget): ActionResult {
+    const plan = this.previewDispatch(squadId, target);
+    if (!plan.ok) return { ok: false, reason: plan.reason, cost: 0 };
+    const sq = this.squads.find((q) => q.id === squadId)!;
+    const now = this.clock.elapsed;
+    if (!this.passive) this.settleExpeditions(now);
+    const carried = cargoAt(sq, now);
+    for (const p of sq.plan)
+      if (p.k === 'gather' && !p.applied) {
+        const n = this.region.node(p.node);
+        if (n) n.amount = Math.max(0, n.amount - gatheredAt(p, now)); // khai dở: trừ phần đã lấy
+        p.applied = true;
+      }
+    sq.cargo = carried;
+    sq.plan = plan.phases;
+    sq.target = target;
+    this.emit();
+    return { ok: true, cost: 0 };
   }
 
   /** Mỗi tiết khí: phàm trần mọc/suy, rồi thu cống phẩm và sản lượng tông môn. */
@@ -204,6 +287,8 @@ export class World {
       grid: this.grid.toJSON(),
       rng: this.rng.state,
       questIndex: this.questIndex,
+      region: this.region.toSave(),
+      squads: structuredClone(this.squads),
     };
   }
 
@@ -214,6 +299,10 @@ export class World {
     clock.speed = s.speed;
     const w = new World(Grid.fromJSON(s.grid), s.linhThach, clock, new Rng(s.rng));
     w.questIndex = s.questIndex ?? 0;
+    // bản lưu trước mốc 1 (chưa có Đạo Đội): lệnh "xuất hành" chen vào vị trí 2, giữ nguyên lệnh đang làm
+    if (!s.squads && w.questIndex >= 2) w.questIndex++;
+    w.region.loadFrom(s.region);
+    if (s.squads) w.squads = structuredClone(s.squads);
     w.questsOn = true;
     return w;
   }
@@ -226,6 +315,8 @@ export class World {
     this.linhThach = s.linhThach;
     if (s.rng !== undefined) this.rng.state = s.rng;
     this.questIndex = s.questIndex ?? 0;
+    this.region.loadFrom(s.region);
+    if (s.squads) this.squads = structuredClone(s.squads);
     this.changed();
   }
 

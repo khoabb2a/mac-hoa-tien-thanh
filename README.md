@@ -27,7 +27,8 @@ Game chạy bằng tài nguyên có sẵn trong repo; khóa Gemini chỉ cần k
 
 1. Trưởng lão Mặc Vân giới thiệu HUD (xem lại: Tông môn → Xem lại hướng dẫn). / Elder Mo Yun tours the HUD (replay: Sect → Replay the tutorial).
 2. Chạm thẻ **令 Thiên Đạo Lệnh** ở góc trên → **Chỉ cho tôi**: game cầm sẵn công cụ Linh lộ và đánh dấu ô 一, 二. Chạm 一 rồi 二, bấm **Làm đường** — Tĩnh Xá lẻ loi có linh khí, nhận 100 linh thạch. / Tap the **令 decree** card → **Show me**: the Spirit Road tool is picked and tiles 一, 二 are marked. Tap 一, then 二, then **Build road**.
-3. Lệnh kế: quy hoạch Phàm Cư cạnh linh lộ — vài nhà mọc ngay; chạm một lô để xem vì sao nó (chưa) mọc. Bấm **Ngự phong** để tua nhanh. / Next: zone Homes beside a road — a few houses appear at once; tap a lot to see why it is (not) growing. Use **Ride the Wind** to fast-forward.
+3. Chip **野 Bản đồ vùng** (góc phải): chạm một mỏ 石 → **Xuất hành**; giữa đường có thể **Đổi đích** hoặc **Gọi về**; linh thạch vào kho khi đội về tới Động Phủ. / The **野 Region Map** chip: tap a 石 mine → **Set out**; change target or **Recall** on the way; stones reach storage when the squad gets home.
+4. Lệnh kế: quy hoạch Phàm Cư cạnh linh lộ — vài nhà mọc ngay; chạm một lô để xem vì sao nó (chưa) mọc. Bấm **Ngự phong** để tua nhanh. / Next: zone Homes beside a road — a few houses appear at once; tap a lot to see why it is (not) growing. Use **Ride the Wind** to fast-forward.
 
 ## Thao tác / Controls
 

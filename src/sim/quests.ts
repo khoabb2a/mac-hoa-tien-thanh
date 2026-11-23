@@ -10,7 +10,7 @@ import { ZONE_ID } from './zones';
  */
 
 /** Nơi "Chỉ cho tôi" đưa người chơi tới: một nút trên HUD và/hoặc một ô trên bản đồ. */
-export type QuestUi = 'build' | 'zone' | 'eye' | 'speed' | 'demand';
+export type QuestUi = 'build' | 'zone' | 'eye' | 'speed' | 'demand' | 'region';
 export interface QuestFocus {
   ui?: QuestUi;
   tile?: [number, number];
@@ -54,6 +54,13 @@ export const QUESTS: readonly QuestDef[] = [
     target: 6,
     reward: 60,
     focus: { ui: 'zone', tile: [14, 11], tool: 'cu', guide: [[12, 11], [17, 11]] },
+  },
+  {
+    id: 'expedition',
+    progress: (w) => w.squads.reduce((a, q) => a + q.trips, 0),
+    target: 1,
+    reward: 100,
+    focus: { ui: 'region' },
   },
   { id: 'residents', progress: (w) => w.stats.residents, target: 20, reward: 80, focus: { ui: 'speed' } },
   { id: 'thi', progress: (w) => w.stats.thiJobs, target: 6, reward: 80, focus: { ui: 'demand' } },
