@@ -229,3 +229,27 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   background: var(--ink-faint); color: var(--paper); font-weight: 700;
 }
 .bottombar button.later > :not(.soon) { opacity: 0.45; }
+
+/* ---------- bản đồ vùng (mốc 1) ---------- */
+.viewchip {
+  position: absolute; right: 12px; top: calc(var(--safe-top) + 122px); min-height: 44px; padding: 0 14px;
+  display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600;
+  border-radius: 22px; background: rgba(239, 230, 210, 0.94); border: 1.5px solid var(--ink);
+}
+.viewchip .glyph { font-size: 18px; }
+.quest-pill { max-width: calc(100vw - 190px); }
+.squads { position: absolute; left: 8px; right: 8px; bottom: calc(var(--safe-bottom) + 70px); display: flex; gap: 6px; }
+.squad {
+  flex: 1; min-width: 0; min-height: 48px; display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px; text-align: left;
+  background: rgba(239, 230, 210, 0.94); border: 1.5px solid var(--ink-faint); border-radius: 10px;
+}
+.squad.on { border-color: var(--ink); box-shadow: 0 0 0 2px rgba(79, 122, 102, 0.5); }
+.squad .seal { width: 30px; height: 30px; font-size: 17px; background: #4F7A66; }
+.sq-text { display: flex; flex-direction: column; min-width: 0; font-size: 12px; line-height: 1.2; }
+.sq-text b { font-size: 13px; }
+.sq-text span, .sq-text b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.region-card { left: 12px; right: 12px; max-width: 420px; margin: 0 auto; bottom: calc(var(--safe-bottom) + 128px); }
+.card.region-card p { margin: 6px 0; font-size: 13px; line-height: 1.35; }
+.card.region-card p.ok { color: #3f6b55; }
+.card.region-card .lot-meta { font-size: 12px; color: var(--ink-soft); }
+.card.region-card .primary { width: 100%; min-height: 44px; margin-top: 6px; background: var(--chu-sa); color: var(--paper); border-radius: 8px; font-weight: 700; font-size: 15px; }

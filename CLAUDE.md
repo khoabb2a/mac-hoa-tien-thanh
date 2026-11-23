@@ -12,7 +12,8 @@ Hướng phát triển: chiến thuật bản đồ chung kiểu Rise of Kingdom
 - `src/render/` chỉ đọc trạng thái sim để vẽ; không chứa luật chơi.
 - `src/ui/` là HUD Preact; gọi sim qua `World`, không chạm vào Three.js.
 - Nhiệm vụ (Thiên Đạo Lệnh, `sim/quests.ts`) đo thẳng từ trạng thái World; chỉ World không thụ động mới thưởng (Worker là nguồn chuẩn); `questsOn` chỉ bật cho ván chơi thật nên World dựng tay trong test không bị thưởng chen vào.
-- Đơn vị thời gian là **tiết khí** (`sim/time.ts`), không dùng ngày/giờ thực trong luật chơi.
+- Đơn vị thời gian là **tiết khí** (`sim/time.ts`), không dùng ngày/giờ thực trong luật chơi. Hành quân dùng giây thời gian game (`clock.elapsed`), cùng đồng hồ nên tạm dừng/Ngự phong áp lên cả đội.
+- Bản đồ vùng (mốc 1): `sim/region.ts` (địa hình, mỏ, tìm đường A*), `sim/expedition.ts` (Đạo Đội, lịch trình tính trọn khi ra lệnh; vị trí/hành trang là hàm của thời gian). Hành trang chỉ vào kho khi đội về tới cổng, đúng một lần (`World.settleExpeditions`). Vẽ: `render/regionScene.ts` dùng chung renderer qua `IsoScene.setExternal`. Đặc tả: `docs/specs/moc-1-xuat-hanh.md`.
 
 ## Song ngữ (bắt buộc)
 - Không viết cứng chữ hiển thị trong code. Mọi chuỗi đi qua `t('khoa')` (`src/i18n`).

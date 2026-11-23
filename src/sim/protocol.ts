@@ -1,3 +1,4 @@
+import type { SquadTarget } from './expedition';
 import type { BuildingType } from './grid';
 import { SECONDS_PER_TERM, SPEEDS, type SpeedIndex } from './time';
 import type { ActionResult, World, WorldSave } from './world';
@@ -10,6 +11,8 @@ export type Action =
   | { k: 'demolish'; x: number; y: number }
   | { k: 'zone'; type: ZoneType; ax: number; ay: number; bx: number; by: number }
   | { k: 'speed'; speed: SpeedIndex }
+  /** Mốc 1: cử Đạo Đội tới mỏ / đổi đích / gọi về (target home). */
+  | { k: 'dispatch'; squad: number; target: SquadTarget }
   /** Chỉ để thử nghiệm (URL có ?debug): tua nhanh n tiết khí. */
   | { k: 'debugAdvance'; terms: number };
 
@@ -38,6 +41,8 @@ export function applyAction(world: World, a: Action): ActionResult {
       return world.demolishAt(a.x, a.y);
     case 'zone':
       return world.zone(a.type, a.ax, a.ay, a.bx, a.by);
+    case 'dispatch':
+      return world.dispatch(a.squad, a.target);
     case 'speed':
       world.clock.speed = a.speed;
       return { ok: true, cost: 0 };

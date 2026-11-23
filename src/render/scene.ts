@@ -9,15 +9,16 @@ import type { ZoneType } from '../sim/zones';
 import { buildBlockout } from './blockout/buildings';
 import { HouseLayer, loadHouseSheets } from './houses';
 import { PALETTE } from './palette';
+import { sealTexture } from './seal';
 import { fitSpriteToBlockout, loadSpriteTexture, SPRITE_URL } from './sprites';
 import { decorFor, loadDecorSheets, makeBackdrop, makeDecorSprite } from './terrainArt';
 import { LAYER, terrainMaterial } from './terrainMaterial';
 
 /** Góc nhìn isometric 2:1 (GDD 3.3): phương vị 45°, nghiêng 30° ⇒ ô vuông thành hình thoi 2:1. */
-const AZIMUTH = Math.PI / 4;
-const ELEVATION = Math.PI / 6;
-const MIN_VIEW = 6;
-const MAX_VIEW = 30;
+export const AZIMUTH = Math.PI / 4;
+export const ELEVATION = Math.PI / 6;
+export const MIN_VIEW = 6;
+export const MAX_VIEW = 30;
 const MAX_MARKS = 600; // vùng quy hoạch lớn cần nhiều ô đánh dấu
 
 export interface SceneOptions {
@@ -101,6 +102,7 @@ export class IsoScene {
   private onLot: (tile: [number, number] | null) => void = () => {};
   private guide: THREE.Group[] = [];
   private guideClock = 0;
+  private external: { frame(dt: number): void } | null = null;
   private onPreview: (p: Preview | null) => void = () => {};
 
   constructor(canvas: HTMLCanvasElement, world: World, act: (a: Action) => ActionResult, opts: SceneOptions) {
@@ -622,6 +624,7 @@ export class IsoScene {
     let moved = 0;
     let pinch = 0;
     canvas.addEventListener('pointerdown', (e) => {
+      if (this.external) return;
       this.glide = null; // người chơi kéo thì thôi lướt
       canvas.setPointerCapture(e.pointerId);
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -651,7 +654,7 @@ export class IsoScene {
     };
     canvas.addEventListener('pointerup', up);
     canvas.addEventListener('pointercancel', up);
-    canvas.addEventListener('wheel', (e) => { e.preventDefault(); this.zoom(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
+    canvas.addEventListener('wheel', (e) => { e.preventDefault(); if (!this.external) this.zoom(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
   }
 
   private tap(px: number, py: number): void {
@@ -732,10 +735,21 @@ export class IsoScene {
     });
   }
 
+  /**
+   * Cảnh khác dùng chung renderer (bản đồ vùng): khi đặt, IsoScene vẫn cho đồng hồ chạy
+   * nhưng nhường việc vẽ và thao tác cho cảnh đó.
+   */
+  setExternal(view: { frame(dt: number): void } | null): void {
+    this.external = view;
+    this.onLot(null);
+    this.onSelect(null);
+  }
+
   private frame(): void {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
     this.world.update(dt);
+    if (this.external) return this.external.frame(dt);
     this.terrainMat.uniforms.uTime.value += dt;
     for (const list of this.spinners.values()) for (const s of list) s.rotation.z += dt * 0.6;
     if (this.glide) {
@@ -780,25 +794,7 @@ const ZONE_TINT: Record<number, THREE.Color> = {
 const ZONE_MARK: Record<ZoneType, string> = { cu: PALETTE.thanhLuc, thi: PALETTE.dangHoang, dien: PALETTE.thachThanh };
 
 /** Hướng từ tâm nhìn tới camera (vector đơn vị). */
-function viewDirection(): THREE.Vector3 {
+export function viewDirection(): THREE.Vector3 {
   return new THREE.Vector3(Math.cos(ELEVATION) * Math.sin(AZIMUTH), Math.sin(ELEVATION), Math.cos(ELEVATION) * Math.cos(AZIMUTH));
 }
 
-/** Ấn triện chu sa với một chữ Hán, vẽ bằng canvas 2D. */
-function sealTexture(ch: string): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const g = c.getContext('2d')!;
-  g.fillStyle = PALETTE.chuSa;
-  g.beginPath();
-  g.roundRect(10, 10, 108, 108, 16);
-  g.fill();
-  g.fillStyle = PALETTE.paper;
-  g.font = 'bold 76px "Noto Serif SC", "Songti SC", serif';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillText(ch, 64, 70);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}

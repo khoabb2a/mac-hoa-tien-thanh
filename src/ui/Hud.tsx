@@ -1,7 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { getLang, onLangChange, setLang, t } from '../i18n';
+import type { RegionPick } from '../render/regionScene';
 import type { ActionOutcome, Preview, Tool } from '../render/scene';
+import { cargoAt, endTime, isOut, stateAt, type SquadTarget } from '../sim/expedition';
+import type { Pt } from '../sim/region';
+import { SPEEDS } from '../sim/time';
+import type { ActionResult } from '../sim/world';
 import { SPRITE_URL } from '../render/sprites';
 import { BUILD_COST, BUILD_MENU, ROAD_COST } from '../sim/economy';
 import { FENG_SHUI_BONUS } from '../sim/fengShui';
@@ -24,6 +29,11 @@ export interface HudActions {
   focusTile: (x: number, y: number, ring?: boolean) => void;
   /** Khoanh các ô cần chạm khi thực hành có dẫn (null = xóa). */
   setGuide: (tiles: Array<[number, number]> | null) => void;
+  /** Bản đồ vùng (mốc 1). */
+  setView: (v: 'home' | 'region') => void;
+  selectSquad: (id: number) => void;
+  dispatch: (target: SquadTarget) => ActionResult;
+  setRegionPreview: (pts: Pt[] | null) => void;
 }
 
 interface Props {
@@ -34,6 +44,9 @@ interface Props {
   preview: Preview | null;
   /** Tăng mỗi khi tự lưu bắt đầu thất bại. */
   saveFailed: number;
+  view: 'home' | 'region';
+  regionPick: RegionPick;
+  squadSel: number;
   actions: HudActions;
 }
 
@@ -45,7 +58,7 @@ const NAV_GLYPH: Record<NavKey, string> = { build: '築', zone: '域', disciples
 const ZONE_GLYPH: Record<ZoneType, string> = { cu: '居', thi: '市', dien: '田' };
 
 /** HUD màn dọc một tay (GDD 9.2): thanh trên, chip nổi, thanh xác nhận, bảng cuộn trục, 5 nút dưới. */
-export function Hud({ world, selected, lot, preview, saveFailed, actions }: Props) {
+export function Hud({ world, selected, lot, preview, saveFailed, view, regionPick, squadSel, actions }: Props) {
   const [, force] = useState(0);
   const [overlay, setOverlay] = useState(false);
   const [art, setArt] = useState(true);
@@ -88,6 +101,15 @@ export function Hud({ world, selected, lot, preview, saveFailed, actions }: Prop
     lastQuest.current = world.questIndex;
   });
 
+  // Đạo Đội về tới Động Phủ: số chuyến tăng trong ảnh chụp từ Worker
+  const lastTrips = useRef(world.squads.map((q) => q.trips));
+  useEffect(() => {
+    world.squads.forEach((q, i) => {
+      if (q.trips > (lastTrips.current[i] ?? 0)) say(t('squad.back', { g: squadGlyph(q.id), n: q.lastHaul }), false, 4000);
+    });
+    lastTrips.current = world.squads.map((q) => q.trips);
+  });
+
   const lastSaveFail = useRef(saveFailed);
   useEffect(() => {
     if (saveFailed > lastSaveFail.current) say(t('toast.saveFail'), true, 6000);
@@ -98,6 +120,7 @@ export function Hud({ world, selected, lot, preview, saveFailed, actions }: Prop
     setQuestOpen(false);
     const f = q.focus;
     // Thực hành có dẫn: cầm sẵn công cụ, khoanh từng ô cần chạm theo thứ tự.
+    if (f.ui === 'region' && view === 'region') return;
     if (f.tool) chooseTool(f.tool === 'road' ? { kind: 'road' } : { kind: 'zone', type: f.tool });
     else if (f.ui === 'eye' || f.ui === 'demand') chooseTool({ kind: 'none' });
     else setPanel('none');
@@ -134,6 +157,7 @@ export function Hud({ world, selected, lot, preview, saveFailed, actions }: Prop
 
   const onNav = (k: NavKey) => {
     setQuestOpen(false);
+    if (view === 'region' && (k === 'build' || k === 'zone')) actions.setView('home');
     if (k === 'build') return setPanel(panel === 'build' ? 'none' : 'build');
     if (k === 'sect') return setPanel(panel === 'sect' ? 'none' : 'sect');
     if (k === 'zone') return setPanel(panel === 'zone' ? 'none' : 'zone');
@@ -166,7 +190,20 @@ export function Hud({ world, selected, lot, preview, saveFailed, actions }: Prop
         <div class="news">{t(`news.${newsIdx}`)}</div>
       </header>
 
-      {tool.kind === 'none' && panel === 'none' && (
+      {(tool.kind === 'none' || view === 'region') && panel === 'none' && (
+        <button
+          class={`viewchip ${pulse === 'region' ? 'pulse' : ''}`}
+          onClick={() => { setQuestOpen(false); actions.setView(view === 'home' ? 'region' : 'home'); }}
+        >
+          <span class="glyph">{view === 'home' ? '野' : '府'}</span> {view === 'home' ? t('view.region') : t('view.home')}
+        </button>
+      )}
+
+      {view === 'region' && panel === 'none' && !questOpen && (
+        <RegionPanel world={world} pick={regionPick} squadSel={squadSel} actions={actions} say={say} />
+      )}
+
+      {view === 'home' && tool.kind === 'none' && panel === 'none' && (
         <>
           <button class="chip art" onClick={() => { const v = !art; setArt(v); actions.setArt(v); }}>
             <span class="glyph">{art ? '畫' : '模'}</span> {art ? t('view.art') : t('view.blockout')}
@@ -177,7 +214,7 @@ export function Hud({ world, selected, lot, preview, saveFailed, actions }: Prop
         </>
       )}
 
-      {tool.kind === 'none' && (panel === 'none' || panel === 'demand') && (
+      {view === 'home' && tool.kind === 'none' && (panel === 'none' || panel === 'demand') && (
         <DemandBars world={world} open={panel === 'demand'} pulse={pulse === 'demand'} onToggle={() => setPanel(panel === 'demand' ? 'none' : 'demand')} />
       )}
 
@@ -189,9 +226,9 @@ export function Hud({ world, selected, lot, preview, saveFailed, actions }: Prop
         onShowMe={showMe}
       />
 
-      {!sel && lot && tool.kind === 'none' && panel === 'none' && !questOpen && <LotCard world={world} x={lot[0]} y={lot[1]} />}
+      {view === 'home' && !sel && lot && tool.kind === 'none' && panel === 'none' && !questOpen && <LotCard world={world} x={lot[0]} y={lot[1]} />}
 
-      {sel && tool.kind === 'none' && panel === 'none' && !questOpen && (
+      {view === 'home' && sel && tool.kind === 'none' && panel === 'none' && !questOpen && (
         <div class="card">
           <strong>{t(`building.${sel.type}`)}</strong>
           <div>{t('overlay.linhKhi')}: {selQi}</div>
@@ -311,7 +348,7 @@ function QuestPanel(p: { world: World; open: boolean; flash: boolean; onToggle: 
 // ---------- hướng dẫn mở đầu ----------
 
 /** Phần tử được soi ở từng bước (null = không soi, thẻ ở giữa). */
-const TUT_TARGET: Array<string | null> = [null, null, '.stats', '.speeds', '.chip.eye', '.demand-bars', '.bottombar', '.quest-pill'];
+const TUT_TARGET: Array<string | null> = [null, null, '.stats', '.speeds', '.chip.eye', '.demand-bars', '.bottombar', '.viewchip', '.quest-pill'];
 const TUT_KEY = 'mhtt.tutorialDone';
 
 function tutorialDone(): boolean {
@@ -508,6 +545,108 @@ function LotCard({ world, x, y }: { world: World; x: number; y: number }) {
       <div class="lot-meta">{t('overlay.linhKhi')}: {s.qi} · {t('fs.label')}: {t(`fs.${s.fengShui}`)}</div>
       <p class={s.reason === 'growing' || s.reason === 'full' ? 'ok' : 'warn'}>{t(`lot.${s.reason}`)}</p>
     </div>
+  );
+}
+
+// ---------- bản đồ vùng (mốc 1) ----------
+
+const SQUAD_GLYPH = ['甲', '乙', '丙', '丁'];
+function squadGlyph(id: number): string {
+  return SQUAD_GLYPH[(id - 1) % SQUAD_GLYPH.length];
+}
+
+/** Giây thời gian game → "m:ss" thời gian thật ở tốc độ hiện tại; null nếu đang tĩnh tọa. */
+function realTime(world: World, gameSec: number): string | null {
+  const sp = SPEEDS[world.clock.speed];
+  if (!sp) return null;
+  const s = Math.max(0, Math.ceil(gameSec / sp));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function RegionPanel(p: { world: World; pick: RegionPick; squadSel: number; actions: HudActions; say: (s: string, bad?: boolean, ms?: number) => void }) {
+  const { world, pick, squadSel, actions } = p;
+  const now = world.clock.elapsed;
+  const sq = world.squads.find((q) => q.id === squadSel) ?? world.squads[0];
+  const node = pick?.k === 'node' ? world.region.node(pick.id) : undefined;
+  const plan = node && node.amount > 0 ? world.previewDispatch(sq.id, { k: 'node', node: node.id }) : null;
+
+  // đường xem trước (nét đứt) cho mỏ đang chọn
+  useEffect(() => {
+    if (plan?.ok) actions.setRegionPreview(plan.phases.flatMap((ph) => (ph.k === 'move' ? ph.pts : [])));
+    else actions.setRegionPreview(null);
+  });
+  useEffect(() => () => actions.setRegionPreview(null), []);
+
+  const status = (q: typeof sq) => {
+    if (!isOut(q)) return t('squad.home');
+    const st = stateAt(q, world.region, now);
+    if (st.phase?.k === 'gather') return t('squad.gathering');
+    return t(q.plan.some((ph) => ph.k === 'gather' && ph.t0 > now) ? 'squad.going' : 'squad.returning');
+  };
+  const eta = (q: typeof sq) => {
+    if (!isOut(q)) return '';
+    const rt = realTime(world, endTime(q) - now);
+    return rt ? t('squad.eta', { t: rt }) : t('squad.paused');
+  };
+  const send = (target: SquadTarget) => {
+    const r = actions.dispatch(target);
+    if (!r.ok) p.say(t(`reason.${r.reason}`), true);
+  };
+
+  return (
+    <>
+      {node && node.amount > 0 && (
+        <div class="card region-card">
+          <strong>{t(`node.${node.kind}`)}</strong>
+          <div>{t('node.amount', { n: node.amount })}</div>
+          <div class="lot-meta">{t('node.for', { g: squadGlyph(sq.id), name: t(`squad.name.${sq.id}`) })}</div>
+          {plan?.ok ? (
+            <>
+              <p class="ok">
+                {t('node.plan', { go: realTime(world, plan.arrive - now) ?? '—', n: plan.amount, home: realTime(world, plan.home - now) ?? '—' })}
+              </p>
+              <button class="primary" onClick={() => send({ k: 'node', node: node.id })}>
+                {isOut(sq) ? t('node.redirect') : t('node.dispatch')}
+              </button>
+            </>
+          ) : (
+            plan && <p class="warn">{t(`reason.${plan.reason}`)}</p>
+          )}
+        </div>
+      )}
+      {!node && pick?.k === 'home' && (
+        <div class="card region-card">
+          <strong>{t('view.home')}</strong>
+          <p>{t('home.card')}</p>
+          <button class="primary" onClick={() => actions.setView('home')}>{t('home.enter')}</button>
+        </div>
+      )}
+      {!node && pick?.k !== 'home' && (
+        <div class="card region-card">
+          <strong>{t('squad.title', { g: squadGlyph(sq.id), name: t(`squad.name.${sq.id}`) })}</strong>
+          <div>
+            {status(sq)} {eta(sq) && <span class="lot-meta">· {eta(sq)}</span>}
+          </div>
+          <div class="lot-meta">{t('squad.cargo', { a: cargoAt(sq, now), b: sq.capacity })}</div>
+          {isOut(sq) && sq.target?.k !== 'home' ? (
+            <button class="primary" onClick={() => send({ k: 'home' })}>{t('squad.recall')}</button>
+          ) : (
+            <p>{t('squad.hint')}</p>
+          )}
+        </div>
+      )}
+      <div class="squads">
+        {world.squads.map((q) => (
+          <button class={`squad ${q.id === sq.id ? 'on' : ''}`} onClick={() => actions.selectSquad(q.id)}>
+            <span class="seal glyph">{squadGlyph(q.id)}</span>
+            <span class="sq-text">
+              <b>{t(`squad.name.${q.id}`)}</b>
+              <span>{status(q)}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 

@@ -26,6 +26,59 @@ Các quyết định này thay cho giả định tương ứng ở trên khi có
 3. **Trước khi có máy chủ: kết quả xác định ngay khi ra lệnh.** Lúc ra lệnh, mô phỏng tính trọn một *lịch trình* cho Đạo Đội: tuyến đường, mốc thời gian đến nơi, lượng thu, kết quả từng trận (dùng `world.rng` nên lưu và tải lại cho cùng kết quả), thời điểm về. Hình ảnh trên bản đồ chỉ minh họa lịch trình đó: vị trí đội là hàm của thời gian, không mô phỏng từng khung hình. Đổi đích hoặc gọi về thì cắt lịch trình tại thời điểm hiện tại và tính lịch trình mới từ vị trí đó; thế cục đổi (mất nguồn tiếp tế, linh thú mới xuất hiện) cũng tính lại phần chưa diễn ra. Mô hình này chuyển thẳng lên máy chủ được: máy chủ chạy cùng hàm tính lịch trình, giữ đồng hồ chung và chỉ gửi lịch trình cho client.
 4. **Bản lưu cũ vẫn đọc được** khi chưa có máy chủ. Trường mới (Đạo Đội, lịch trình, hành trang) là tùy chọn, bản lưu thiếu thì nhận giá trị mặc định.
 
+## Tài nguyên (chốt 23/11/2026, thử chơi rồi chỉnh)
+
+Rise of Kingdoms có bốn tài nguyên thu trên bản đồ (lương thực, gỗ, đá, vàng), cộng vật phẩm và tri thức. Bản tiên hiệp chia bốn tầng, mỗi tầng có chỗ dùng rõ ràng:
+
+| Tầng | Tài nguyên | Lấy ở đâu | Dùng vào |
+|---|---|---|---|
+| Năng lượng | **Linh khí** (thiên địa nguyên khí) | Tụ Linh Trận, mắt linh mạch. Không tích trữ: là dòng chảy | Cấp cho công trình; trên bản đồ vùng là **tiếp tế** cho Đạo Đội |
+| Tiền tệ | **Linh thạch** | Mỏ linh thạch trên bản đồ vùng, cống phẩm phàm trần | Xây, nâng cấp, luyện quân, giao dịch |
+| | **Tiên ngọc** | Rất hiếm: bí cảnh, Kỳ thiên tượng, thành tựu (không bán, game không kiếm tiền) | Mở khóa đặc biệt, đổi truyền thừa |
+| Thu trên bản đồ (≈ 4 tài nguyên RoK) | **Linh thảo** | Dược điền hoang, thung lũng | Nuôi đệ tử (bảo trì quân), luyện đan |
+| | **Linh mộc** | Rừng cổ thụ | Xây dựng tầng thấp |
+| | **Linh khoáng** (huyền thiết, xích đồng…) | Mỏ trong núi | Xây dựng tầng cao, luyện khí |
+| | **Linh thạch mạch** | Mỏ linh thạch | Ra Linh thạch |
+| Chế tác | **Đan dược** | Đan phòng (Luyện đan sư) từ Linh thảo | Chữa thương binh, tăng tốc, đột phá cảnh giới Hộ pháp |
+| | **Pháp bảo, phù lục, trận kỳ** | Luyện khí phòng, Phù lục đường, Trận đường | Trang bị Hộ pháp; phù dùng một lần trên bản đồ; trận kỳ giữ mắt linh mạch |
+| Chiến lợi phẩm | **Yêu tài** (da, xương, yêu hạch, huyết mạch) | Đánh yêu thú (≈ man rợ RoK) | Luyện khí, luyện đan cao cấp, Ngự thú |
+| | **Thiên địa kỳ trân** | Bí cảnh, Kỳ thiên tượng | Đột phá lớn, pháp bảo đỉnh |
+| Tri thức | **Công pháp** | Tàng Kinh Các (≈ Học viện RoK): cây nghiên cứu dùng tài nguyên + thời gian | Tăng chỉ số quân, khai thác, xây |
+| | **Truyền thừa** | Bí cảnh, di tích, sự kiện (≈ tượng tướng RoK) | Mở và nâng kỹ năng Hộ pháp |
+| | **Bí cảnh, di tích** | Điểm đặc biệt trên bản đồ vùng | Thám hiểm PvE lấy kỳ trân, truyền thừa |
+
+Mốc 1 chỉ dùng **Linh thạch mạch → Linh thạch**; mô hình dữ liệu (loại tài nguyên của điểm khai thác, hành trang) để sẵn cho các loại khác.
+
+## Hệ tu và quân (chốt 23/11/2026, thử chơi rồi chỉnh)
+
+Ba lớp, ghép từ RoK (binh chủng + văn minh + tướng):
+
+**1. Bốn binh chủng (khắc chế vòng như bộ – kỵ – cung RoK, cộng công thành):**
+
+| Binh chủng | Vai trò | Khắc | Bị khắc |
+|---|---|---|---|
+| **Thể tu** | Tiền tuyến, chịu đòn, hồi phục | Kiếm tu (thân thể chặn kiếm khí) | Khí tu |
+| **Kiếm tu** | Đột kích nhanh, sát thương dồn | Khí tu (áp sát trước khi niệm xong) | Thể tu |
+| **Khí tu** (pháp tu, linh tu) | Pháp thuật tầm xa | Thể tu (pháp thuật xuyên nhục thân) | Kiếm tu |
+| **Trận sư** | Phá trận, công/giữ mắt linh mạch và công trình | Công trình, trận pháp | Yếu khi giao tranh ngoài đồng |
+
+Đệ tử luyện ở Động Phủ theo cảnh giới (Luyện Khí → Trúc Cơ → Kim Đan… ≈ cấp quân T1–T5), tốn Linh thảo, Linh thạch và thời gian. Nút **Đệ tử** sẽ thành nơi luyện quân.
+
+**2. Đạo thống của tông môn (≈ văn minh RoK, chọn khi lập tông):** mỗi đạo thống cộng chỉ số và có một quân đặc trưng.
+
+| Đạo thống | Điểm mạnh | Quân đặc trưng (gợi ý) |
+|---|---|---|
+| **Chính đạo** (đạo tu) | Cân bằng, tiếp tế linh khí xa hơn | Kiếm tu Thanh Phong |
+| **Phật môn** | Phòng thủ, hồi thương binh, công đức | Thể tu Kim Thân |
+| **Ma đạo** | Sát thương cao, cướp tài nguyên; tiếp tế tốn hơn | Khí tu Huyết Sát |
+| **Yêu tộc** | Hành quân nhanh trên rừng núi, khai thác nhanh | Ngự thú kỵ (cưỡi linh thú) |
+
+**3. Hộ pháp (≈ tướng RoK):** dẫn một Đạo Đội, có cây thiên phú theo binh chủng hoặc vai trò (khai thác, giữ mạch, đánh yêu thú), kỹ năng mở bằng Truyền thừa, đột phá cảnh giới bằng Đan dược.
+
+**Bách nghệ** (luyện đan, luyện khí, phù chú, trận pháp, ngự thú) là các công trình và chức nghiệp trong Động Phủ, biến tài nguyên thô thành đan dược, pháp bảo, phù lục, trận kỳ, linh thú. Ngự thú sư mở quân linh thú.
+
+Mốc 1 chỉ có Đạo Đội mặc định (Hộ pháp + đệ tử chưa chia binh chủng) để thử vòng xuất hành.
+
 ## Đồ họa và thao tác
 
 Giữ camera trực giao isometric 2:1, nền giấy, núi bằng các lớp mực và tài nguyên họa bản của dự án khi có quyền sử dụng. Ở tầm nhìn gần, hiển thị mái, cây và công trình. Ở tầm nhìn xa, gom vật trang trí, dùng dấu cho Đạo Đội, mắt linh mạch và địa hình chặn đường. Dùng nét liền cho lệnh đang thực thi, nét đứt cho lệnh đang xem trước và hình dấu riêng cho trạng thái thiếu tiếp tế. Khi người chơi chọn một Đạo Đội, thanh dưới hiện đích, thời gian đến dự kiến, tiếp tế và nút gọi về. Thiên Nhãn hiển thị cả nguồn lẫn đoạn đường bị đứt.
